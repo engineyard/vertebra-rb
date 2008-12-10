@@ -1,0 +1,151 @@
+Vertebra is a distributed application platform running atop the ejabberd XMPP
+server.
+
+=== Quick Start
+
+  sudo gem install rspec open4 thor rr
+
+  clone git@github.com:engineyard/vertebra.git
+  pushd vertebra
+  sudo rake install
+  popd
+
+  clone git@github.com:engineyard/vertebra-gem.git
+  pushd vertebra-gem
+  sudo rake install
+  popd
+
+Make sure to install the vertebra-gem; the default config for the slice agent
+in vertebra references the vertebra-gem actor so that there is a real actor
+available for testing.
+
+Vertebra also requires an ejabberd setup to function, with the following users
+and passwords:
+
+USERNAME                         PASSWORD
+-------------------------        --------
+admin@localhost                  any - your choice
+herault@localhost                "testing"
+rd00-n00@localhost               "testing"
+rd00-s00000@localhost            "testing"
+vertebra-client@localhost        "testing"
+cavalcade@localhost              "testing"
+entrepot@localhost               "testing"
+
+Additionally, rd00-s00000@localhost and rd00-n00@localhost must be added to
+herault@localhost's roster. This is done via ejabberd's web admin interface.
+
+The following examples assume you are using the sample configs. Adjust as
+necessary if your local settings are different.
+
+=== Starting Herault
+
+Agents require an instance of Herault, the discovery and security agent.
+
+Vertebra uses an Erlang Herault implementation, now.  You will need the
+vertebra-herault package, and associated dependencies (look in the
+vertebra-herault/README for full instructions on installing and running
+herault).  Once it is fully installed, one can run it like so:
+
+vertebra-erl/priv/vertebractl herault start
+
+== Running some agents
+
+A 'server' agent (one that will load actors and respond to operations)
+requires at least one actor to work. The default defined in the sample slice
+agent config is the 'gem' actor for manipulating gems on a host. It also
+requires 'default' resources which are usually something about the location
+of the agent. The sample uses slice 0 on cluster rd00.
+
+To run the slice agent:
+
+% bin/vagent start -c spec/config/slice_agent.yml
+
+To set various paths for pid files, logs and the herault agent's JID, check
+the sample config at spec/config/slice_agent.yml. Packet debugging to the log
+is switched on with the jabber_debug option.
+
+=== Vertebra Clients -- vshell
+
+There are two approaches.  The first is to start a persistent client agent
+which will be controlled via 'vshell'.  To do this, use:`
+
+% bin/vagent start -c spec/config/client.yml
+
+You control a client agent via DRb, Ruby's built-in message passing protocol.
+The following command drops you into a normal Ruby shell with an instance
+variable representing the agent:
+
+% bin/vshell <port>
+
+The port number is optional. The default is 10392, the port defined in the
+client.yml example.
+
+To perform a discovery operation against Herault:
+
+> @agent.discover '/cluster/rd00', '/slice/0', '/gem'
+
+This command returns a hash of JIDs that provide the requested resources.
+
+To send an operation to a JID and wait for its results, use op or op,
+depending on the IQ packet type:
+
+> @agent.op('/gem/list','rd00-s00000@localhost')
+
+To perform a single operation over a set of resources which includes
+discovering the actors and JIDs that provide them, use the #request method:
+
+In this example, you get a hash of jids and their results, which should be
+arrays of numbers from any agent that matches the given resources.
+
+results_hash = @agent.request('list', *['/cluster/rd00', '/gem'])
+
+=== Vertebra Clients -- vertebra
+
+The second, and more simple method, is to use the vertebra command line tool,
+'vertebra'.  It allows one to do discovery and dispatch ops without having a
+persistently running client agent, and without using vshell.
+
+vertebra /gem/list res:/cluster/rd00 res:/slice/0
+
+vertebra --help
+
+vertebra /OP [vertebra-flags] [op arguments]
+  --all             Dispatch the op with a scope of 'all'.  This is the default.
+  --single          Dispatch the op with a scope of 'single'.
+  --config FILENAME Specify a config file to use. If not specified, this
+                    defaults to HOME/.vertebra/vertebra
+  --jid JID         The JID to use to connect to vertebra. This overrides
+                    anything specified in the configuration file.
+  --herault-jid JID The JID of the herault instance to query for discovery.
+  --password PWD    The password to use with the jid to connect to vertebra.
+  --yaml            Transform the op results to YAML before displaying them.
+                    This tends to make them more human readable, and is the
+                    default.
+  --inspect         Display the results of the op in the Ruby inspect format.
+  --log             Turn logging on. This will write an agent.PID.log file to
+                    the temp directory, logging the CLI actions. Off by default.
+  --discover        Do discovery only. This is primarily a developer tool.
+  --help            Show this text.
+  
+Anything on the command line that is not one of the above flags is passed to
+the operation.  In order to differentiate between resources and other strings
+on the command line, one should preface any resource with 'res:'.
+
+i.e.
+
+vertebra /gem/list res:/cluster/rd00 res:/slice/0
+
+All resources that are provided on the command line will be used for discovery.
+
+Primarily as a developer aid, one may also provide specific jids:
+
+vertebra /gem/list jid:rd00-s00000@localhost/agent
+
+It is a good idea to setup a configuration file for the vertebra command line
+tool.  The command line looks for HOME/.vertebra/vertebra for its default
+configuration file.  The file is a YAML formatted file:
+
+jid: vertebra-client@localhost/agent
+password: testing
+herault_jid: herault@localhost/herault

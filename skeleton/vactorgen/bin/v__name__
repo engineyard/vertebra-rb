@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require File.dirname(__FILE__) + '/../lib/<%= @config[:name] %>/actor'
+
+begin
+  <%= @config[:class_name] %>::Actor.start
+rescue Thor::Options::Error => e
+  puts e.message
+end

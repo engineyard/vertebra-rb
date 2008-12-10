@@ -1,0 +1,87 @@
+#!/usr/bin/env ruby
+#
+
+require File.dirname(__FILE__) + '/../lib/vertebra'
+require 'rubygems'
+require 'open4'
+
+module Vertebra
+  class AgentRunner < Thor
+
+    before :load_config, :setup_drb
+
+    desc "start [options]", "Start a Vertebra agent"
+    method_options :config_file => :optional, :jid => :optional, :password => :optional, :use_drb => :boolean, :drb_port => :optional, :background => :optional,
+                   :debug => :boolean, :jabber_debug => :boolean, :herault_jid => :optional, :log_path => :optional, :pid_path => :optional, :test_mode => :boolean
+
+    def start(options = {})
+      begin
+        logger.level = @config[:debug] ? Logger::DEBUG : Logger::INFO
+        agent_type = 'vertebra/agent'
+
+        require File.dirname(__FILE__) + "/../lib/#{agent_type}"
+
+        start = lambda do
+          agent_class = constant(agent_type.constantcase)
+          agent_class.new(@config[:jid], @config[:password], @config).start
+        end
+
+        options[:background] ? Vertebra::Daemon.daemonize(start) : start.call
+      rescue Exception => e
+        logger.error e.message
+        logger.error e.backtrace
+      end
+    end
+
+    desc "stop", "Stop a running Vertebra agent"
+    method_options :config_file => :optional
+
+    def stop(options = {})
+     Vertebra::Daemon.stop
+    end
+
+    desc "restart", "Restart a running Vertebra agent"
+    method_options :config_file => :optional
+
+    def restart(options = {})
+      stop
+      sleep 2
+      start
+    end
+
+    desc "status", "Get a running agent process status"
+    method_options :config_file => :optional
+
+    def status(options = {})
+      pid = IO.read(@config[:pid_path]).chomp.to_i
+      if Process.is_running?(pid)
+        psdata = `ps up #{pid}`.split("\n").last.split
+        memory = (psdata[5].to_i / 1024)
+        puts "The agent is alive, using #{memory}MB of memory"
+      else
+        puts "The agent is not running but has a stale pid file at #{@config[:pid_path]}"
+      end
+    end
+
+    private
+
+    def setup_drb(options = {})
+      @agent = DRbObject.new(nil, "druby://localhost:#{@config[:drb_port]}") if @config[:drb_port]
+    end
+
+    def load_config(options = {})
+      options.symbolize_keys!
+      path = options[:config_file] || "/etc/vertebra/agent.yml"
+      if File.exists?(path)
+        @config = Vertebra.config = YAML.load(File.read(path))
+        @config.merge(options)
+        @config.symbolize_keys!
+      else
+        raise ArgumentError, "Config file #{path} doesn't exist. Specify another with the -c option."
+      end
+    end
+
+  end
+end
+
+Vertebra::AgentRunner.start

@@ -1,0 +1,173 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'optparse'
+require 'readline'
+require 'vertebra/generator_core'
+
+class PrivateString < String
+  def camelCase
+    return self if self == ''
+    parts = split(/[_\s]/)
+    PrivateString.new(([parts[0].to_s.downcase] + parts[1..-1].collect {|x| x.capitalize}).join)
+  end
+
+  def constantCase
+    return self if self == '' or (self =~ /^[A-Z]/ and self !~ /[_\s]/)
+    tmp = camelCase
+    tmp[0] = tmp[0].chr.upcase
+    PrivateString.new(tmp)
+  end
+end
+
+module Vertebra
+  class VertebraActorGenerator
+    def self.parse_options
+      name_now = "new_vertebra_actor_#{Time.now.strftime('%Y%m%d%H%M%S')}"
+      @config = {
+        :destination_dir => name_now,
+                 :verbose => false,
+                 :dryrun => false,
+                 :name => name_now,
+                 :description => 'A new actor.',
+                 :noquestions => false,
+                 :author => 'EY Development Team',
+                 :email => 'development@engineyard.com',
+                 :url => 'http://projects.engineyard.com',
+                 :operations => [],
+                 :resources => []
+      }
+
+      OptionParser.new do |opts|
+        opts.banner = 'Usage: vactorgen [options] [actor_dir]'
+        opts.separator ''
+
+        opts.on('-v','--verbose','Be wordy when giving feedback about what is happening') do |conf|
+          @config[:verbose] = true
+        end
+
+        opts.on('--dry-run',"Walk through the whole process, but don't actually create anything.") do |conf|
+          @config[:dryrun] = true
+        end
+
+        opts.on('-n','--name [NAME]','The actor name.  This should be a short name suitable for use in file names.') do |conf|
+          @config[:name] = conf
+        end
+
+        opts.on('-a','--author [AUTHOR]','The author of the actor.') do |conf|
+          @config[:author] = conf
+        end
+
+        opts.on('-e','--email [EMAIL]','The contact email address for the actor.') do |conf|
+          @config[:email] = conf
+        end
+
+        opts.on('u','--url [URL]','The url with information about this actor.') do |conf|
+          @config[:url] = conf
+        end
+
+        opts.on('-d','--description [DESCRIPTION]','A short description of the actor being generated.') do |conf|
+          @config[:description] = conf
+        end
+
+        opts.on('-c','--class-name [CLASS]','The class name.  This should be a short name suitable for use in code.') do |conf|
+          # TODO: sanity check this class name.
+          @config[:class_name] = conf
+        end
+
+        opts.on('--no-questions',"Don't ask questions; just accept items loaded from the config file, if any, and the command line.") do |conf|
+          @config[:noquestions] = true
+        end
+
+        opts.on('-f','--config-file [FILENAME]','Read the supplied config file for options') do |conf|
+          require 'yaml'
+          begin
+            new_config = YAML.load(File.read(conf))
+          rescue Errno::ENOENT => e
+            puts "The config file (#{conf}) could not be read.  Exiting.\n\n#{e}\n\n"
+            exit
+          end
+
+          unless Hash === new_config
+            puts "The format of the config file (#{conf}) appears to be incorrect.  Eiting.\n\n"
+            exit
+          end
+
+          @config = new_config.merge(@config)
+        end
+        unless @config[:class_name]
+          @config[:class_name] = PrivateString.new(@config[:name].tr('-','_')).constantCase
+        end
+      end.parse!
+
+      dirname = @config['destination_dir'] || ARGV .first # Look at 'destination_dir' in case that was defined in the conf file.
+      @config[:destination_dir] = dirname if dirname
+    end
+
+    def self.walk_through_questions
+      line = Readline::readline("Directory for the new actor [#{@config[:destination_dir]}]: ")
+      @config[:destination_dir] = line.strip if !line.strip.empty?
+      @config[:destination_dir] = File.expand_path(@config[:destination_dir])
+
+      if FileTest.exist?(@config[:destination_dir])
+        line = Readline::readline("The directory (#{@config[:destination_dir]}) already exists; continue [No]? ")
+        unless line =~ /^\s*y/i
+          puts "Exiting from the vertebra actor generator because the directory (#{@config[:destination_dir]}) already exists."
+          exit
+        else
+          timestamp = Time.now.strftime('%Y%m%d%H%M%S')
+          puts "Moving #{@config[:destination_dir]} to #{@config[:destination_dir]}.#{timestamp}"
+          FileUtils.mv(@config[:destination_dir],"#{@config[:destination_dir]}.#{timestamp}")
+        end
+      end
+
+      line = Readline::readline("Actor name. This should be suitable for use in file names [#{@config[:name]}]: ")
+      if !line.strip.empty?
+        @config[:name] = line.strip
+        @config[:class_name] = PrivateString.new(@config[:name].tr('-','_')).constantCase
+      end
+
+      line = Readline::readline("Actor class name. This should be suitable for use in code [#{@config[:class_name]}]: ")
+      @config[:class_name] = line.strip if !line.strip.empty?
+
+      line = Readline::readline("Description. A short description of the actor being generated: ")
+      @config[:description] = line.strip if !line.strip.empty?
+
+      line = Readline::readline("Author. The person or team writing the actor [#{@config[:author]}]: ")
+      @config[:author] = line.strip if !line.strip.empty?
+
+      line = Readline::readline("Email. The contact address regarding the actor [#{@config[:email]}]: ")
+      @config[:email] = line.strip if !line.strip.empty?
+
+      line = Readline::readline("URL.  A URL for information about the actor [#{@config[:url]}]: ")
+      @config[:url] = line.strip if !line.strip.empty?
+
+      puts "Operations.  Enter each of the operations that the actor can respond to, in full /resource/op form.\nEnter one per line.  When all additional operations have been provided, enter a blank line to continue."
+      puts "Currently defined operations: #{@config[:operations].join("\n")}" if @config[:operations] and !@config[:operations].empty?
+
+      loop do
+        line = Readline::readline("> ")
+        break if line.strip.empty?
+
+        @config[:operations] << line.strip
+      end
+      @config[:resources] = @config[:operations].collect {|x| x.split('/')[1]}.uniq.collect {|x| "/#{x}"}
+    end
+
+    def self.generate_actor
+      @config[:skeleton_dir] = GeneratorCore::skeleton_dir('vactorgen')
+      @config[:config_alias] = ['@actor','@config']
+
+      GeneratorCore::generate_files(@config)
+    end
+
+    def self.run
+      parse_options
+      walk_through_questions unless @config[:noquestions]
+
+      generate_actor
+    end
+  end
+end
+
+Vertebra::VertebraActorGenerator.run

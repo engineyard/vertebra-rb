@@ -1,0 +1,5 @@
+check process vertebra_agent with pidfile /var/run/vertebra/agent.pid
+    start program = "/bin/true"
+    stop program  = "/usr/bin/vagent stop -c /etc/vertebra/agent.yml"
+    if totalmem > 70.0 MB for 1 cycles then restart
+    if 3 restarts within 5 cycles then timeout

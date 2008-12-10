@@ -1,0 +1,68 @@
+
+
+Server receives op:
+    <iq from='rd00-s00000@localhost/agent' type='get' to='rd00-n00@localhost/agent' id='29485' xml:lang='en'>
+	  <op token='7e5293c579f4a9fa8da6320e9ef03e3f' type='array_of_numbers' xmlns='http://xmlschema.engineyard.com/agent/api'>
+		<res name='/mock'>/mock</res>
+	  </op>
+	</iq>
+
+Server responds to op:
+    <iq from='rd00-n00@localhost/agent' type='result' id='29485' to='rd00-s00000@localhost/agent' xmlns='jabber:client'>
+	  <op token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8' type='array_of_numbers' xmlns='http://xmlschema.engineyard.com/agent/api'>
+		<res name='/mock'>/mock</res>
+	  </op>
+	</iq>
+
+
+Server sends authorize op to herault:
+    <iq type='get' id='167678' to='herault@localhost/herault' xmlns='jabber:client'>
+	  <op token='2e4068c23985546db41da9e59bbe7b24:c4dd99aea3171638ebbe046d80f72b06' type='authorize' xmlns='http://xmlschema.engineyard.com/agent/api'>
+	    <res name='/mock'>/mock</res>
+	    <string name='from'>rd00-s00000@localhost/agent</string>
+	    <string name='to'>rd00-n00@localhost/agent</string>
+	  </op>
+	</iq>
+    
+
+Server receives auth response from herault:    
+    <iq from='herault@localhost/herault' type='result' to='rd00-n00@localhost/agent' id='167678' xml:lang='en'>
+	  <result token='c4dd99aea3171638ebbe046d80f72b06:1cf31c37861defd3af15c8b5a858ed6f' xmlns='http://xmlschema.engineyard.com/agent/api'>
+		<authorized/>
+	  </result>
+	</iq>
+
+
+Server sends Ack to Client
+    <iq type='set' id='168924' to='rd00-s00000@localhost/agent' xmlns='jabber:client'>
+	  <ack token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8' xmlns='http://xmlschema.engineyard.com/agent/api'/>
+	</iq>
+
+Server receives response to Ack:
+    <iq from='rd00-s00000@localhost/agent' type='result' id='168924' to='rd00-n00@localhost/agent' xmlns='jabber:client'>
+      <ack token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8' xmlns='http://xmlschema.engineyard.com/agent/api'/>
+    </iq>
+
+Server dispatches op and sends results to CLient:
+    <iq type='set' id='169418' to='rd00-s00000@localhost/agent' xmlns='jabber:client'>
+	  <result token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8' xmlns='http://xmlschema.engineyard.com/agent/api'>
+		<list name='response'>
+			<i4>1</i4><i4>2</i4><i4>3</i4>
+		</list>
+	  </result>
+	</iq>
+
+Server receives response to result:
+    <iq from='rd00-s00000@localhost/agent' type='result' to='rd00-n00@localhost/agent' id='169418' xml:lang='en'>
+      <result token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8' xmlns='http://xmlschema.engineyard.com/agent/api'/>
+    </iq>
+
+Server sends final:
+    <iq type='set' id='170571' to='rd00-s00000@localhost/agent' xmlns='jabber:client'>
+	  <final token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8'/>
+	</iq>
+
+Server receievs response to <final>
+    <iq from='rd00-s00000@localhost/agent' type='result' id='170571' to='rd00-n00@localhost/agent' xmlns='jabber:client'>
+      <final token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8'/>
+    </iq>

@@ -1,0 +1,14 @@
+--- 
+default_resources: 
+log_path: <%= @config[:agent_log_path] %>
+actors: 
+- vertebra-gemtool/actor
+- vertebra/actors/core
+drb_port: 12345
+jabber_debug: false
+herault_jid: herault@engineyard.com/herault
+jid: localhost@/agent
+use_drb: false
+pid_path: /var/run/vertebra/agent.pid
+debug: true
+password: 57128b039a9646ac786dec94398843fa

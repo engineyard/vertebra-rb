@@ -1,0 +1,53 @@
+
+# request to herault to discover slice 38 on ey04
+<iq from='ezra@engineyard.com/agent' type='get' id='11709' to='herault@engineyard.com/herault'>
+	<op token='919898d7c219ef1359b31bc0e0cae934' type='discover'>
+		<res>/cluster/ey04</res>
+		<res>/slice/38</res>
+	</op>
+</iq>
+
+# response from herault
+<iq from='herault@engineyard.com/herault' type='result' to='ezra@engineyard.com/agent' id='11709' xml:lang='en'>
+	<op token='919898d7c219ef1359b31bc0e0cae934' type='discover'>
+		<res>/cluster/ey04</res>
+		<res>/slice/38</res>
+	</op>
+	<list name='jids'>
+		<string>ey04-s00038@ey04.engineyard.com/agent</string>
+	</list>
+</iq>
+
+# list all the gems on slice 38 on ey04 by sending an op of type=list to the proper res's
+<iq from='ezra@engineyard.com/agent' type='get' id='4493' to='ey04-s00038@ey04.engineyard.com/agent'>
+	<op token='e415012af2e8033a7274e68d37e20b63' type='list'>
+	    <res name='/cluster/ey04'>/cluster/ey04</res>
+		<res name='/slice/38'>/slice/38</res>
+		<res name='/gem'>/gem</res>
+	</op>
+</iq>
+
+# Receive acknowledgement that agent is working on request
+<iq from='ey04-s00038@ey04.engineyard.com/agent' type='result' to='ezra@engineyard.com/agent' id='4493' xml:lang='en'>
+	<ack token='e415012af2e8033a7274e68d37e20b63'/>
+</iq>
+
+# Receive final result with status=final and token matching our initial request
+<iq from='ey04-s00038@ey04.engineyard.com/agent' type='set' to='ezra@engineyard.com/agent' id='34912' xml:lang='en'>
+	<result status='final' token='e415012af2e8033a7274e68d37e20b63' >
+		<list name='values'>
+			<string>RubyInline 3.6.7</string>
+			<string>ZenTest 3.9.2</string>
+			<string>actionmailer 2.0.2</string>
+			<string>actionpack 2.0.2</string>
+			<string>activerecord 2.0.2</string>
+			<string>activeresource 2.0.2</string>
+		</list>
+	</result>
+</iq>
+
+
+# Send acknowledgement that we received final result
+<iq from='ezra@engineyard.com/agent' type='result' to='ey04-s00038@ey04.engineyard.com/agent' id='4493' xml:lang='en'>
+	<ack token='e415012af2e8033a7274e68d37e20b63'/>
+</iq>

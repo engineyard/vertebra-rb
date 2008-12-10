@@ -1,0 +1,15 @@
+jid: rd00-n00@rd00.engineyard.com/agent
+password: some_pass
+use_drb: false
+drb_port: 12345
+debug: true
+jabber_debug: false
+log_path: /var/log/vertebra/agent.log
+pid_path: /var/run/vertebra/agent.pid
+herault_jid: herault@engineyard.com/herault
+actors:
+ - vertebra-gemtool/actor
+ - vertebra/actors/core
+default_resources:
+ - /cluster/rd00
+ - /node/0

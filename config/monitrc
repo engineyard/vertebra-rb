@@ -1,0 +1,10 @@
+set daemon  30
+set logfile syslog facility log_daemon
+set mailserver smtp.ey05.engineyard.com
+set mail-format {from:info@engineyard.com}
+set alert eymonit@gmail.com only on { timeout, nonexist }
+set httpd port 9111
+    allow localhost
+    allow nagios.ey05.engineyard.com
+
+include /etc/monit.d/*.monitrc
