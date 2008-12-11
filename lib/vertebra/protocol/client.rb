@@ -55,7 +55,7 @@ module Vertebra
         begin
           logger.debug "Client#make_request with #{@agent}"
           @agent.client.send_with_reply(iq) do |answer|
-            logger.debug "Client#make_request got answer #{answer}"
+            logger.debug "Client#make_request got answer #{answer.node}"
             if answer.sub_type == LM::MessageSubType::RESULT
               self.token = answer.node.get_child('op')['token']
               @agent.clients[self.token] = self
@@ -100,7 +100,11 @@ module Vertebra
         result_iq.node.value = ack_nack
         #result_iq.node.value = ack_nack.to_s.strip
         result_iq.root_node.set_attribute('type', 'result')
-        @agent.client.send(result_iq)
+        if @state == :authfail
+        	@agent.client.send(result_iq)
+	else
+		@agent.client.send_with_reply(result_iq) {|answer| process_result_or_final(answer)}
+        end
       end
 
       def process_result_or_final(iq)
@@ -116,21 +120,16 @@ module Vertebra
           @agent.clients.delete(token)
         end
         
-        # 
-        # if iq.node.name == 'result'
-        #   (@results ||= []) << Vertebra::Marshal.decode(ele)
-        #   ele.children.each{|e| ele.delete(e)}
-        # elsif iq.node.name == 'final'
-        #   @state = :commit
-        #   @agent.clients.delete(token)
-        # end
-
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
         result_iq.node.raw_mode = true
         result_iq.node.set_attribute('id', iq.node.get_attribute('id'))
         result_iq.node.value = ele.to_s
         result_iq.node.set_attribute('type', 'result')
-        @agent.client.send(result_iq)
+        if @state == :commit
+          @agent.client.send(result_iq)
+        else
+          @agent.client.send_with_reply(result_iq) {|answer| process_result_or_final(answer)}
+        end
       end
 
       def results

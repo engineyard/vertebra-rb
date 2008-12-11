@@ -66,7 +66,7 @@ module Vertebra
     def set_callbacks
       @conn.set_disconnect_handler do |reason|
         logger.debug "Disconnected"
-        main_loop.quit
+        @main_loop.quit
       end
 
       @conn.add_message_handler(LM::MessageType::MESSAGE) do |msg|
