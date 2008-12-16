@@ -37,10 +37,12 @@ module Vertebra
 
     class Client
 
+#include DRb::DRbUndumped
+
       DONE_STATES = [:commit, :authfail, :error]
 
       attr_accessor :token, :agent
-      attr_reader :state
+      attr_reader :state, :to
 
       def initialize(agent, op, to)
         @agent = agent
@@ -68,7 +70,7 @@ module Vertebra
           end
         rescue Vertebra::JabberError => e
           @result = "Failure; #{e}"
-          logger.debug "Client#make_request #{@result}"
+          logger.debug "Client#make_request Error #{@result}"
           @state = :error
         end
         logger.debug "Client#make_request returning token #{token}"
@@ -76,7 +78,7 @@ module Vertebra
       end
 
       def receive(iq)
-        logger.debug "Client#recieve state:#{@state} iq:#{iq}"
+        logger.debug "Client#recieve state:#{@state} iq:#{iq.node}"
         case @state
         when :ready
           process_ack_or_nack(iq)
@@ -86,6 +88,7 @@ module Vertebra
       end
 
       def process_ack_or_nack(iq)
+        logger.debug "Client#process_ack_or_nack: #{iq.node}"
         if ack_nack = iq.node.get_child("ack")
           @state = :consume
         elsif ack_nack = iq.node.get_child("nack")
@@ -103,12 +106,13 @@ module Vertebra
         if @state == :authfail
         	@agent.client.send(result_iq)
 	else
+logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
 		@agent.client.send_with_reply(result_iq) {|answer| process_result_or_final(answer)}
         end
       end
 
       def process_result_or_final(iq)
-        logger.debug "Client#process_result_or_final: #{iq}"
+        logger.debug "Client#process_result_or_final: #{iq.node}"
         result_iq = nil
         
         if ele = iq.node.get_child('result')

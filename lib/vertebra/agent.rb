@@ -29,14 +29,26 @@ end
 module Vertebra
   class Agent < BaseAgent
 
+include DRb::DRbUndumped
+
     attr_accessor :dispatcher, :herault_jid, :clients, :servers
+
+    BUSY_CHECK_INTERVAL = 0.1
 
     def initialize(jid, password, opts = {})
 
       super(jid, password, opts)
 
+      @busy_jids = {}
+      @pending_clients = []
+      @active_clients = []
+      @advertise_timer_started = false
+
       @main_loop = GLib::MainLoop.new(nil,nil)
       @conn = LM::Connection.new
+
+      GLib::Timeout.add(2000) {handle_clients}
+      @busy_check_timer = Time.now
 
       set_callbacks
 
@@ -61,6 +73,49 @@ module Vertebra
       end
 
       self.accept_subscriptions = true
+    end
+
+    def handle_clients
+      # Check all active connections for ones that are done; only do this
+      # at most once every BUSY_CHECK_INTERVAL seconds.
+      #
+      # Then dispatch and pending clients which are not being blocked by
+      # existing, active clients to the same jid.
+      
+      if Time.now - @busy_check_timer >= BUSY_CHECK_INTERVAL
+        new_list = []
+        # This might not be the ideal way to do this. It should be benchmarked
+        # and compared to random access deletes in arrays and other data
+        # structures, if performance here becomes an issue.
+        while active_client = @active_clients.pop
+logger.debug "ACTIVE_HANDLER: (#{@active_clients.length}) #{active_client.to} -- #{active_client.done?}"
+          if active_client.done?
+            @busy_jids.delete active_client.to
+          else
+            new_list << active_client
+          end
+        end
+        @active_clients = new_list
+        logger.debug "Busy jids: #{@busy_jids.inspect}"
+
+        @busy_check_timer = Time.now
+      end
+
+      new_list = []
+logger.debug "Pending clients: #{@pending_clients}"
+      while pending_client = @pending_clients.pop
+        if @busy_jids.has_key? pending_client.to 
+          new_list << pending_client
+        else
+          @active_clients << pending_client
+          @busy_jids[pending_client.to] = true
+logger.debug "  making request to #{pending_client.to}"
+          pending_client.make_request
+logger.debug "    next"
+        end
+      end
+      @pending_clients = new_list
+
     end
 
     def set_callbacks
@@ -90,7 +145,8 @@ module Vertebra
       op = Vertebra::Op.new(op_type, *args)
       client = Vertebra::Protocol::Client.new(self, op, to)
       logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
-      client.make_request
+      #client.make_request
+      @pending_clients << client
       client
     end
 
@@ -306,9 +362,11 @@ module Vertebra
     end
 
     def advertise_resources
-      resources = provided_resources
-      advertise_op(resources)
-      Thread.new {sleep(@ttl * 0.9); advertise_resources} # Readvertise before the resources expire
+      advertise_op(provided_resources)
+      unless @advertise_timer_started
+        GLib::Timeout.add_seconds(@ttl * 0.9) {advertise_op(provided_resources,@ttl)} 
+        @advertise_timer_started = true
+      end
     end
 
     def provided_resources
