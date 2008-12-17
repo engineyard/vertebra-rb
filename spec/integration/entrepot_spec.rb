@@ -40,6 +40,7 @@ describe 'Entrepot' do
     run_agent('client')
 
     @client = DRbObject.new(nil, "druby://localhost:#{CLIENT[:drb_port]}")
+    @api = Vertebra::ClientAPI.new(@client)
   end
 
   before(:each) do
@@ -61,32 +62,29 @@ describe 'Entrepot' do
             'value' => {'baz' => 'quux'}}
 
   it 'should discover entrepot' do
-    warm_up do
-      @client.discover('/entrepot')
-    end
 
-    result = @client.discover '/entrepot'
+    result = @api.discover '/entrepot'
     result['jids'].first.should == ENTREPOT_JID
   end
 
   it 'should store a value directly' do
-    result = @client.op('/entrepot/store', ENTREPOT_JID, VALUE1)
+    result = @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
     result.should == VALUE1
   end
 
   it 'should fetch values' do
-    @client.op('/entrepot/store', ENTREPOT_JID, VALUE1)
-    @client.op('/entrepot/store', ENTREPOT_JID, VALUE2)
-    result = @client.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
+    @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
+    @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
+    result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
     result.should == [VALUE1, VALUE2]
   end
 
   it 'should delete values' do
-    @client.op('/entrepot/store', ENTREPOT_JID, VALUE1)
-    @client.op('/entrepot/store', ENTREPOT_JID, VALUE2)
-    result = @client.op('/entrepot/delete', ENTREPOT_JID, 'key' => VALUE2['key'])
+    @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
+    @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
+    result = @api.op('/entrepot/delete', ENTREPOT_JID, 'key' => VALUE2['key'])
     result.should == VALUE2
-    result = @client.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
+    result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
     result.should == VALUE1
   end
 end

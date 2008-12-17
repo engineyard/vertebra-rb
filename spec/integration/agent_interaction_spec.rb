@@ -16,7 +16,7 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/../spec_helper'
-require 'vertebra/agent'
+require 'vertebra/client_api'
 require 'vertebra-gemtool/actor'
 
 include Vertebra
@@ -40,6 +40,7 @@ describe 'Vertebra client' do
     run_agent('slice_agent')
 
     @client = DRbObject.new(nil, "druby://localhost:#{CLIENT[:drb_port]}")
+    @api = Vertebra::ClientAPI.new(@client)
     @slice_agent = DRbObject.new(nil, "druby://localhost:#{SLICE_AGENT[:drb_port]}")
     @node_agent = DRbObject.new(nil, "druby://localhost:#{NODE_AGENT[:drb_port]}")
     warm_up do
@@ -63,44 +64,39 @@ describe 'Vertebra client' do
   end
 
   it 'discover agent from herault' do
-    warm_up do
-      @client.discover '/cluster/rd00', '/slice/0'
-    end
-
-    result = @client.discover '/cluster/rd00', '/slice/0'
+    result = @api.discover '/cluster/rd00', '/slice/0'
     result['jids'].first.should == SLICE_AGENT[:jid]
   end
 
   it 'not discover agents for a non-existent combination of resources' do
-    result = @client.discover '/cluster/rd00', '/slice/536'
+    result = @api.discover '/cluster/rd00', '/slice/536'
     result['jids'].should == []
-    result = @client.discover '/cluster/ae02', '/node/1'
+    result = @api.discover '/cluster/ae02', '/node/1'
     result['jids'].should == []
-    result = @client.discover '/some/nonexistent/resource'
+    result = @api.discover '/some/nonexistent/resource'
     result['jids'].should == []
   end
 
   it 'get a number list from a slice' do
     resources = resource_list('/cluster/rd00', '/slice/0', '/mock')
-    results = @client.request('/list/numbers', *resources)
+    results = @api.request('/list/numbers', *resources)
     results.should == [{"response" => [1,2,3]}]
   end
 
   it 'get number list from slice and node that offer /mock' do
     resources = resource_list('/cluster/rd00', '/mock')
-    results = @client.request('/list/numbers', *resources)
+    results = @api.request('/list/numbers', *resources)
     results.should == [{"response"=>[1, 2, 3]}, {"response"=>[1, 2, 3]}]
   end
 
   it 'get number list from specific slice and give a final result with integer values in the array' do
-    result = @client.op('/list/numbers', SLICE_AGENT[:jid], :resource => res('/mock'))
-    node = Vertebra::JID.new(SLICE_AGENT[:jid]).node
+    result = @api.op('/list/numbers', SLICE_AGENT[:jid], :resource => res('/mock'))
     result.should == {'response' => [1,2,3]}
   end
 
   it 'get letter list from a slice' do
     resources = resource_list('/cluster/rd00', '/slice/0', '/mock')
-    results = @client.request('/list/letters', *resources)
+    results = @api.request('/list/letters', *resources)
     results.should == [{"response" => ['a','b','c']}]
   end
 
@@ -108,7 +104,18 @@ describe 'Vertebra client' do
     expected = VertebraGemtool::Actor.new.list
 
     resources = resource_list('/cluster/rd00', '/slice/0', '/gem')
-    results = @client.request('/gem/list', *resources)
+    results = @api.request('/gem/list', *resources)
     results.first['response']['result'].should == expected[:result]
   end
+
+  it 'get a number list from a slice' do
+    resources = resource_list('/cluster/rd00', '/slice/0', '/mock')
+    start = Time.now
+    40.times do
+      results = @api.request('/list/numbers', *resources)
+    end
+    finish = Time.now
+    puts "40 ops took #{finish - start} seconds: #{40 / (finish - start)}/second"
+  end
+
 end

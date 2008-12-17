@@ -30,15 +30,22 @@ module Vertebra
 		# Vertebra::Resource.  It returns a list of jids that
 		# will handle any of the resources.
 		def discover(*resources)
-			client = @handle.direct_op('/security/discover',
+			op('/security/discover',
 				@handle.herault_jid,
 				*resources.collect do |r|
 					Vertebra::Resource === r ? r.to_s : r
 				end)
+		end
+
+		def direct_op(op_type, to, *args)
+			@handle.direct_op(op_type, to, *args)
+		end
+
+		def op(op_type, to, *args)
+			client = direct_op(op_type, to, *args)
 			while !(z = client.done?)
 				sleep 0.05
 			end
-			
 			client.results
 		end
 
@@ -93,15 +100,14 @@ module Vertebra
 		end
 
 
-#    def scatter(jids, op_type, *args)
-#      ops = {}
-#      jids.each do |jid|
-#        logger.debug "scatter# #{op_type}/#{jid}/#{args.inspect}"
-#        ops[jid] = direct_op(op_type, jid, *args)
-#      end
-#      ops
-#    end
-#
+		def scatter(jids, op_type, *args)
+			ops = {}
+			jids.each do |jid|
+ 				ops[jid] = direct_op(op_type, jid, *args)
+			end
+			ops
+		end
+
 #    def single_scatter_and_gather(jids, op_type, *args)
 #      errors = [:error]
 #      result = nil
@@ -121,20 +127,19 @@ module Vertebra
 #      result ? result : errors
 #    end
 #
-#    def gather(ops={})
-#      results = []
-#      while ops.size > 0 do
-#        ops.each do |jid, client|
-#          logger.debug "#{jid} -- #{client.state}"
-#          if client.done?
-#            results << client.results unless client.results.empty?
-#            ops.delete(jid)
-#          end
-#        end
-#        sleep(1)
-#      end
-#      results
-#    end
+    def gather(ops={})
+      results = []
+      while ops.size > 0 do
+        ops.each do |jid, client|
+          if client.done?
+            results << client.results unless client.results.empty?
+            ops.delete(jid)
+          end
+        end
+        sleep(0.05)
+      end
+      results
+    end
 
     def advertise_op(resources, ttl = @handle.ttl)
       client = @handle.direct_op('/security/advertise',
