@@ -36,7 +36,7 @@ module Vertebra
 					Vertebra::Resource === r ? r.to_s : r
 				end)
 			while !(z = client.done?)
-				sleep 1
+				sleep 0.05
 			end
 			
 			client.results
@@ -48,51 +48,51 @@ module Vertebra
 #      args.push params if params
 #      gather(scatter(jids['jids'], op_type, *args))
 #    end
-#
-#    def request(op_type, *raw_args)
-#      # If the scope of the request is going to be specified, it should be
-#      # passed via a symbol as the first arg -- :single or :all.  That arg
-#      # will be removed from the list before issuing the request.  If a
-#      # scope is not given, :all is the assumed scope.
-#      
-#      case raw_args.first
-#      when :single
-#        scope = :single
-#        raw_args.shift
-#      when :all
-#        scope = :all
-#        raw_args.shift
-#      else
-#        scope = :all
-#      end
-#      
-#      resources = raw_args.select {|r| Vertebra::Resource === r}
-#      cooked_args = []
-#      specific_jids = []
-#      raw_args.each do |arg|
-#        next if Vertebra::Resource === arg
-#        
-#        if arg =~ /^jid:(.*)/
-#          specific_jids << $1
-#        else
-#          cooked_args << arg
-#        end
-#      end
-#      jids = discover(op_type,*resources)
-#      if Array === jids
-#        target_jids = jids.concat(specific_jids)
-#      else
-#        target_jids = jids['jids'].concat(specific_jids)
-#      end
-#      
-#      if scope == :all
-#        gather(scatter(target_jids, op_type, *cooked_args))
-#      else
-#        gather_first(scatter(target_jids, op_type, *cooked_args))
-#      end
-#    end
-#
-#
+
+		def request(op_type, *raw_args)
+			# If the scope of the request is going to be specified, it should be
+			# passed via a symbol as the first arg -- :single or :all.  That arg
+			# will be removed from the list before issuing the request.  If a
+			# scope is not given, :all is the assumed scope.
+      
+			case raw_args.first
+			when :single
+				scope = :single
+				raw_args.shift
+			when :all
+				scope = :all
+				raw_args.shift
+			else
+				scope = :all
+			end
+
+			resources = raw_args.select {|r| Vertebra::Resource === r}
+			cooked_args = []
+			specific_jids = []
+			raw_args.each do |arg|
+				next if Vertebra::Resource === arg
+        
+				if arg =~ /^jid:(.*)/
+					specific_jids << $1
+				else
+					cooked_args << arg
+				end
+			end
+			jids = discover(op_type,*resources)
+			if Array === jids
+				target_jids = jids.concat(specific_jids)
+			else
+				target_jids = jids['jids'].concat(specific_jids)
+			end
+      
+			if scope == :all
+				gather(scatter(target_jids, op_type, *cooked_args))
+			else
+				gather_first(scatter(target_jids, op_type, *cooked_args))
+			end
+		end
+
+
 #    def scatter(jids, op_type, *args)
 #      ops = {}
 #      jids.each do |jid|
@@ -136,7 +136,7 @@ module Vertebra
 #      results
 #    end
 
-    def advertise_op(resources, ttl)
+    def advertise_op(resources, ttl = @handle.ttl)
       client = @handle.direct_op('/security/advertise',
         @handle.herault_jid,
         :resources => resources,
@@ -144,7 +144,7 @@ module Vertebra
       )
 
       while !(z = client.done?)
-        sleep 1
+        sleep 0.05
       end
     end
 

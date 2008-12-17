@@ -32,6 +32,7 @@ module Vertebra
 include DRb::DRbUndumped
 
     attr_accessor :dispatcher, :herault_jid, :clients, :servers
+    attr_reader :ttl
 
     BUSY_CHECK_INTERVAL = 0.1
 
@@ -47,7 +48,7 @@ include DRb::DRbUndumped
       @main_loop = GLib::MainLoop.new(nil,nil)
       @conn = LM::Connection.new
 
-      GLib::Timeout.add(2000) {handle_clients}
+      GLib::Timeout.add(20) {handle_clients}
       @busy_check_timer = Time.now
 
       set_callbacks

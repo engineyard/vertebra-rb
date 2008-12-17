@@ -16,7 +16,7 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/../spec_helper'
-require 'vertebra/agent'
+require 'vertebra/client_api'
 
 include Vertebra
 
@@ -34,6 +34,7 @@ describe 'Herault' do
     run_agent('client')
 
     @client = DRbObject.new(nil, "druby://localhost:#{CLIENT[:drb_port]}")
+    @api = Vertebra::ClientAPI.new(@client)
   end
 
   before(:each) do
@@ -48,45 +49,29 @@ describe 'Herault' do
   HERAULT_JID = 'herault@localhost/herault'
 
   it 'should not be discovered' do
-    warm_up do
-      @client.discover('/')
-    end
-
-    result = @client.discover
+    result = @api.discover('/')
     result['jids'].include?(HERAULT_JID).should == false
   end
 
   it 'should advertise and unadvertise' do
     resource = res("/foo/bar")
     # Make sure herault doesn't have any advertising already there for this resource.
-    @client.advertise_op([resource], 0)
+    @api.advertise_op([resource], 0)
 
-    warm_up do
-      r = @client.discover('/foo/bar')['jids']
-      @client.discover('/foo/bar')['jids'] == []
-    end
-
-    @client.discover(resource)['jids'].should == []
-    @client.advertise_op([resource])
-    @client.discover(resource)['jids'].should == [CLIENT[:jid]]
-    @client.advertise_op([resource], 0)
-    @client.discover(resource)['jids'].should == []
+    @api.discover(resource)['jids'].should == []
+    @api.advertise_op([resource])
+    @api.discover(resource)['jids'].should == [CLIENT[:jid]]
+    @api.advertise_op([resource], 0)
+    @api.discover(resource)['jids'].should == []
   end
 
   it 'should discover all resources' do
-    warm_up do
-      @client.advertise_op(res('/foo'))
-      @client.discover(res('/'))['jids'].size.should == 1
-      @client.advertise_op(res('/foo'), 0)
-    end
+    @api.advertise_op(res('/foo'))
+    @api.discover(res('/'))['jids'].size.should == 1
   end
 
   it 'should expire resources' do
-    resource = res("/foo/bar")
-    @client.advertise_op([resource], 1)
-    sleep(1)
-    warm_up do
-      @client.discover(resource)['jids'].should == []
-    end
+     @api.unadvertise_op(res('/foo'))
+     @api.discover(res('/'))['jids'].size.should == 0
   end
 end
