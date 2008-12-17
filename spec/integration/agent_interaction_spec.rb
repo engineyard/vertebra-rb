@@ -115,7 +115,7 @@ describe 'Vertebra client' do
       results = @api.request('/list/numbers', *resources)
     end
     finish = Time.now
-    puts "40 ops took #{finish - start} seconds: #{40 / (finish - start)}/second"
+    puts "\n40 ops took #{finish - start} seconds: #{40 / (finish - start)}/second"
   end
 
 end

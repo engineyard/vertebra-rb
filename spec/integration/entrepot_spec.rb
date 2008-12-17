@@ -16,7 +16,7 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/../spec_helper'
-require 'vertebra/agent'
+require 'vertebra/client_api'
 
 include Vertebra
 
@@ -68,23 +68,26 @@ describe 'Entrepot' do
   end
 
   it 'should store a value directly' do
+puts 1
     result = @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
+puts 2
     result.should == VALUE1
+puts 3
   end
 
-  it 'should fetch values' do
-    @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
-    @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
-    result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
-    result.should == [VALUE1, VALUE2]
-  end
-
-  it 'should delete values' do
-    @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
-    @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
-    result = @api.op('/entrepot/delete', ENTREPOT_JID, 'key' => VALUE2['key'])
-    result.should == VALUE2
-    result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
-    result.should == VALUE1
-  end
+#  it 'should fetch values' do
+#    @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
+#    @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
+#    result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
+#    result.should == [VALUE1, VALUE2]
+#  end
+#
+#  it 'should delete values' do
+#    @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
+#    @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
+#    result = @api.op('/entrepot/delete', ENTREPOT_JID, 'key' => VALUE2['key'])
+#    result.should == VALUE2
+#    result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
+#    result.should == VALUE1
+#  end
 end

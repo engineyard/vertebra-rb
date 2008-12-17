@@ -16,7 +16,7 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/../spec_helper'
-require 'vertebra/agent'
+require 'vertebra/client_api'
 
 include Vertebra
 
@@ -41,6 +41,7 @@ describe 'Cavalcade' do
     run_agent('slice_agent')
 
     @client = DRbObject.new(nil, "druby://localhost:#{CLIENT[:drb_port]}")
+    @api = Vertebra::ClientAPI.new(@client)
     @slice_agent = DRbObject.new(nil, "druby://localhost:#{SLICE_AGENT[:drb_port]}")
   end
 
@@ -59,17 +60,13 @@ describe 'Cavalcade' do
   CAVALCADE_JID = 'cavalcade@localhost/cavalcade'
 
   it 'Should discover cavalcade' do
-    warm_up do
-      @client.discover('/workflow')
-    end
-
-    result = @client.discover '/workflow'
+    result = @api.discover '/workflow'
     result['jids'].first.should == CAVALCADE_JID
   end
 
   it 'Should save a workflow' do
     workflow = '<workflow name="list_gems" start="find_slices"></workflow>'
-    result = @client.op('/workflow/store', CAVALCADE_JID, :workflow => workflow)
+    result = @api.op('/workflow/store', CAVALCADE_JID, :workflow => workflow)
     result.should == {'result' => "ok"}
   end
 
@@ -97,10 +94,10 @@ describe 'Cavalcade' do
         </state>
       </workflow>
     EOT
-    @client.op('/workflow/store', CAVALCADE_JID, :workflow => workflow)
+    @api.op('/workflow/store', CAVALCADE_JID, :workflow => workflow)
 
-    expected_result = @client.request('/gem/list', res('/gem')).first
-    #result = @client.op('/workflow/execute', CAVALCADE_JID, :workflow => 'list_gems')
+    expected_result = @api.request('/gem/list', res('/gem')).first
+    #result = @api.op('/workflow/execute', CAVALCADE_JID, :workflow => 'list_gems')
     #response = result['workflow_results'].detect do |item|
     #  Hash === item and item.key? 'response'
     #end
