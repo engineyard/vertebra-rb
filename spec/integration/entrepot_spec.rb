@@ -16,7 +16,7 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/../spec_helper'
-require 'vertebra/agent'
+require 'vertebra/client_api'
 
 include Vertebra
 
