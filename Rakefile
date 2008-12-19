@@ -6,10 +6,9 @@ require 'rake/testtask'
 require "spec/rake/spectask"
 
 GEM = "vertebra"
-GEM_VERSION = "0.4.2"
-AUTHOR = "EY Development Team"
-EMAIL = "development@engineyard.com"
-HOMEPAGE = "http://projects.engineyard.com"
+GEM_VERSION = "0.3.0"
+AUTHOR = "Engine Yard, Inc."
+HOMEPAGE = "http://vertebra.engineyard.com"
 SUMMARY = "XMPP framework for autonomous agents"
 
 spec = Gem::Specification.new do |s|
@@ -70,6 +69,11 @@ end
 desc "install the gem locally"
 task :install => [:package] do
   sh %{sudo gem install pkg/#{GEM}-#{GEM_VERSION} --no-update-sources}
+end
+
+desc "uninstall the gem locally"
+task :uninstall => [:package] do
+  sh %{sudo gem uninstall #{GEM} -v #{GEM_VERSION} -I -x}
 end
 
 desc "create a gemspec file"
