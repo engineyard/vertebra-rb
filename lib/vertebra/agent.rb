@@ -37,7 +37,6 @@ include DRb::DRbUndumped
     BUSY_CHECK_INTERVAL = 0.1
 
     def initialize(jid, password, opts = {})
-
       super(jid, password, opts)
 
       @busy_jids = {}
@@ -97,22 +96,18 @@ logger.debug "ACTIVE_HANDLER: (#{@active_clients.length}) #{active_client.to} --
           end
         end
         @active_clients = new_list
-        logger.debug "Busy jids: #{@busy_jids.inspect}"
 
         @busy_check_timer = Time.now
       end
 
       new_list = []
-logger.debug "Pending clients: #{@pending_clients}"
       while pending_client = @pending_clients.pop
         if @busy_jids.has_key? pending_client.to 
           new_list << pending_client
         else
           @active_clients << pending_client
           @busy_jids[pending_client.to] = true
-logger.debug "  making request to #{pending_client.to}"
           pending_client.make_request
-logger.debug "    next"
         end
       end
       @pending_clients = new_list
