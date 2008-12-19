@@ -111,7 +111,7 @@ describe 'Vertebra client' do
   it 'get a number list from a slice' do
     resources = resource_list('/cluster/rd00', '/slice/0', '/mock')
     start = Time.now
-    40.times do
+    40.times do |n|
       results = @api.request('/list/numbers', *resources)
     end
     finish = Time.now
