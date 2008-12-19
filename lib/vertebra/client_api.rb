@@ -108,54 +108,37 @@ module Vertebra
 			ops
 		end
 
-#    def single_scatter_and_gather(jids, op_type, *args)
-#      errors = [:error]
-#      result = nil
-#      jids.each do |jid|
-#        op = direct_op(op_type, jid, *args)
-#        until client.done?
-#          sleep(0.1)
-#        end
-#        if client.state == :commit # A completion
-#          result = client.results
-#          break
-#        elsif client.state == :error
-#          errors << client.results
-#        end
-#      end
-#      
-#      result ? result : errors
-#    end
-#
-    def gather(ops={})
-      results = []
-      while ops.size > 0 do
-        ops.each do |jid, client|
-          if client.done?
-            results << client.results unless client.results.empty?
-            ops.delete(jid)
-          end
-        end
-        sleep(0.05)
-      end
-      results
-    end
+		def gather(ops={}, single_scope = false)
+			results = []
+			while ops.size > 0 do
+				ops.each do |jid, client|
+					if client.done?
+						results << client.results unless client.results.empty?
+						ops.delete(jid)
+						break if single_scope
+					end
+				end
+				break if single_scope and results.size > 0
+				sleep(0.05)
+			end
+			single_scope ? results.first : results
+		end
 
-    def advertise_op(resources, ttl = @handle.ttl)
-      client = @handle.direct_op('/security/advertise',
-        @handle.herault_jid,
-        :resources => resources,
-        :ttl => ttl
-      )
+		def advertise_op(resources, ttl = @handle.ttl)
+			client = @handle.direct_op('/security/advertise',
+				@handle.herault_jid,
+				:resources => resources,
+				:ttl => ttl
+			)
 
-      while !(z = client.done?)
-        sleep 0.05
-      end
-    end
+			while !(z = client.done?)
+				sleep 0.05
+			end
+		end
 
-    def unadvertise_op(resources)
-      advertise_op(resources,0)
-    end
+		def unadvertise_op(resources)
+			advertise_op(resources,0)
+		end
 
 	end
 end
