@@ -41,25 +41,19 @@ end
 desc "Run unit specs"
 Spec::Rake::SpecTask.new("unit") do |t|
   t.spec_opts = ["--format", "specdoc", "--colour"]
-  t.spec_files = FileList["spec/**/*_spec.rb"].exclude("spec/integration/*", "spec/acceptance/*")
+  t.spec_files = FileList["spec/**/*_spec.rb"].exclude("spec/integration/*")
 end
 
 desc "Run unit and integration specs"
 Spec::Rake::SpecTask.new("specs") do |t|
   t.spec_opts = ["--format", "specdoc", "--colour"]
-  t.spec_files = FileList["spec/**/*_spec.rb"].exclude("spec/acceptance/*_spec.rb")
+  t.spec_files = FileList["spec/**/*_spec.rb"]
 end
 
 desc "Run integration specs"
 Spec::Rake::SpecTask.new("integration") do |t|
   t.spec_opts = ["--format", "specdoc", "--colour"]
   t.spec_files = FileList["spec/integration/*_spec.rb"]
-end
-
-desc "Run remote acceptance specs"
-Spec::Rake::SpecTask.new("acceptance") do |t|
-  t.spec_opts = ["--format", "specdoc", "--colour"]
-  t.spec_files = FileList["spec/acceptance/*_spec.rb"]
 end
 
 desc "Run all specs with bacon"
