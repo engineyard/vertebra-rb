@@ -67,11 +67,15 @@ describe 'Herault' do
 
   it 'should discover all resources' do
     @api.advertise_op(res('/foo'))
-    @api.discover(res('/'))['jids'].size.should == 1
+    warm_up do
+      result = @api.discover(res('/'))['jids'].size.should == 1
+    end
   end
 
   it 'should expire resources' do
-     @api.unadvertise_op(res('/foo'))
-     @api.discover(res('/'))['jids'].size.should == 0
+    @api.unadvertise_op(res('/foo'))
+    warm_up do
+      @api.discover(res('/'))['jids'].size.should == 0
+    end
   end
 end

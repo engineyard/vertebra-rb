@@ -68,11 +68,8 @@ describe 'Entrepot' do
   end
 
   it 'should store a value directly' do
-puts 1
     result = @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
-puts 2
     result.should == VALUE1
-puts 3
   end
 
 #  it 'should fetch values' do
