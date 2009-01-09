@@ -1,53 +1,18 @@
 Vertebra is a distributed application platform running atop the ejabberd XMPP
 server.
 
-=== Quick Start
-
-  sudo gem install rspec open4 thor rr
-
-  clone git@github.com:engineyard/vertebra.git
-  pushd vertebra
-  sudo rake install
-  popd
-
-  clone git@github.com:engineyard/vertebra-gem.git
-  pushd vertebra-gem
-  sudo rake install
-  popd
-
-Make sure to install the vertebra-gem; the default config for the slice agent
-in vertebra references the vertebra-gem actor so that there is a real actor
-available for testing.
-
-Vertebra also requires an ejabberd setup to function, with the following users
-and passwords:
-
-USERNAME                         PASSWORD
--------------------------        --------
-admin@localhost                  any - your choice
-herault@localhost                "testing"
-rd00-n00@localhost               "testing"
-rd00-s00000@localhost            "testing"
-vertebra-client@localhost        "testing"
-cavalcade@localhost              "testing"
-entrepot@localhost               "testing"
-
-Additionally, rd00-s00000@localhost and rd00-n00@localhost must be added to
-herault@localhost's roster. This is done via ejabberd's web admin interface.
-
-The following examples assume you are using the sample configs. Adjust as
-necessary if your local settings are different.
-
 === Starting Herault
 
-Agents require an instance of Herault, the discovery and security agent.
+Agents require an instance of Herault, the discovery and security agent. The
+current implementation of Herault can be found in the vertebra-erl
+project. If vertebra-erl has been installed, then you can start Herault like
+this:
 
-Vertebra uses an Erlang Herault implementation, now.  You will need the
-vertebra-herault package, and associated dependencies (look in the
-vertebra-herault/README for full instructions on installing and running
-herault).  Once it is fully installed, one can run it like so:
+ $ vertebractl herault start
 
-vertebra-erl/priv/vertebractl herault start
+Or if you'd like to run it in debug mode:
+
+ $ vertebractl herault run
 
 == Running some agents
 

@@ -57,6 +57,6 @@ end
 desc "Run unit and integration specs"
 Spec::Rake::SpecTask.new("specs") do |t|
   t.spec_opts = ["--format", "specdoc", "--colour"]
-  t.spec_files = FileList["spec/**/*_spec.rb"].exclude("spec/acceptance/*_spec.rb")
+  t.spec_files = FileList["spec/**/*_spec.rb"]
 end
 
