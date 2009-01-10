@@ -17,6 +17,7 @@
 
 require File.dirname(__FILE__) + '/spec_helper'
 require 'vertebra/deferrable'
+require 'vertebra/synapse'
 require 'glib2'
 
 describe Vertebra::Deferrable do
@@ -40,7 +41,7 @@ describe Vertebra::Deferrable do
   it 'test callback() wih preset status == :failed' do
     df = Vertebra::Deferrable::Klass.new
     df.instance_variable_set('@deferred_status',:failed)
-    df.callback {7}.class.should == Vertebra::Deferrable::CallbackFailed
+    df.callback {7}.class.should == Vertebra::Deferrable::SetCallbackFailed
   end
   
   # errback
@@ -62,7 +63,7 @@ describe Vertebra::Deferrable do
   it 'test errback() with preset status == :succeeded' do
     df = Vertebra::Deferrable::Klass.new
     df.instance_variable_set('@deferred_status',:succeeded)
-    df.errback {9}.class.should == Vertebra::Deferrable::CallbackFailed
+    df.errback {9}.class.should == Vertebra::Deferrable::SetCallbackFailed
   end
 
   # set_deferred_status
@@ -165,4 +166,80 @@ describe Vertebra::Deferrable do
     df.fail.should == 9
   end
   
+end
+
+describe Vertebra::Synapse do
+  it 'test conditional()/conditions()' do
+    df = Vertebra::Synapse.new
+    df.conditions.length.should == 0
+    df.condition {7}
+    df.conditions.length.should == 1
+    df.condition {:seven}
+    df.conditions.length.should == 2    
+  end
+  
+  it 'test deferred_status?() on :succeded' do
+    df = Vertebra::Synapse.new
+    df.condition {:succeded}
+    df.deferred_status?.should == :succeded
+  end
+  
+  it 'test deferred_status?() on layered :succeded' do
+    df = Vertebra::Synapse.new
+    df.condition {:succeded}
+    df.condition {:succeded}
+    df.deferred_status?.should == :succeded
+  end
+  
+  it 'test deferred_status?() on :deferred' do
+    df = Vertebra::Synapse.new
+    df.condition {:deferred}
+    df.deferred_status?.should == :deferred
+  end
+  
+  it 'test deferred_status() on :succeded/deferred' do
+    df = Vertebra::Synapse.new
+    df.condition {:succeded}
+    df.condition {:deferred}
+    df.deferred_status?.should == :deferred
+    
+    df = Vertebra::Synapse.new
+    df.condition {:succeded}
+    df.condition {:deferred}
+    df.condition {:succeded}
+    df.deferred_status?.should == :deferred
+  end
+  
+  it 'test deferred_status?() on :deferred/failed' do
+    df = Vertebra::Synapse.new
+    df.condition {:deferred}
+    df.condition {:failed}
+    df.deferred_status?.should == :deferred
+  end
+  
+  it 'test deferred_status?() on :failed' do
+    df = Vertebra::Synapse.new
+    df.condition {:failed}
+    df.deferred_status?.should == :failed
+  end
+  
+  it 'test deferred_status?() on :succeded/failed' do
+    df = Vertebra::Synapse.new
+    df.condition {:succeded}
+    df.condition {:failed}
+    df.deferred_status?.should == :failed
+    
+    df = Vertebra::Synapse.new
+    df.condition {:succeded}
+    df.condition {:failed}
+    df.condition {:succeded}
+    df.deferred_status?.should == :failed
+  end
+  
+    it 'test deferred_status?() on :failed/deferred' do
+    df = Vertebra::Synapse.new
+    df.condition {:failed}
+    df.condition {:deferred}
+    df.deferred_status?.should == :failed
+  end
 end
