@@ -72,13 +72,13 @@ describe 'Entrepot' do
     result.should == VALUE1
   end
 
-#  it 'should fetch values' do
-#    @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
-#    @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
-#    result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
-#    result.should == [VALUE1, VALUE2]
-#  end
-#
+ it 'should fetch values' do
+   @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
+   @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
+   result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
+   result.should == [VALUE1, VALUE2]
+ end
+
 #  it 'should delete values' do
 #    @api.op('/entrepot/store', ENTREPOT_JID, VALUE1)
 #    @api.op('/entrepot/store', ENTREPOT_JID, VALUE2)
@@ -87,4 +87,5 @@ describe 'Entrepot' do
 #    result = @api.op('/entrepot/fetch', ENTREPOT_JID, 'key' => {'cluster' => res('/cluster/42')})
 #    result.should == VALUE1
 #  end
+
 end
