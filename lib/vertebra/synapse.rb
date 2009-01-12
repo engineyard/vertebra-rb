@@ -8,7 +8,7 @@ module Vertebra
 			return unless block
 
 			case @deferred_status
-			when :succeed, :fail
+			when :succeeded, :failed
 				SetCallbackFailed.new
 			else
 				@conditions ||= []
@@ -21,16 +21,24 @@ module Vertebra
 		end
 		
 		def deferred_status?(*args)
+			r = :unk
 			state = :succeed
 			case @deferred_status
-			when :succeed, :fail
-				nil
+			when :succeeded, :failed
+				r = [nil, @deferred_status]
 			else
 				if @conditions
-					while cond = @conditions.pop
+					@conditions.each do |cond|
 						r = cond.call(self,*args)
+						if r == true
+							r = :succeeded
+						elsif !r
+							r = :failed
+						end
 						break if r == :failed or r == :deferred
 					end
+				else
+					r = :succeeded
 				end
 			end
 			r

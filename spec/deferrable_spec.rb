@@ -117,7 +117,7 @@ describe Vertebra::Deferrable do
     @cb_results = []
     @main_loop = GLib::MainLoop.new(nil,nil)
     df.errback {@cb_results << 9; @main_loop.quit}
-    GLib::Timeout.add(1) {df.timeout(1);false}
+    GLib::Timeout.add(1) {df.timeout = 1;false}
     GLib::Timeout.add(4000) {@cb_results << :timeout_failed; @main_loop.quit}
     
     @main_loop.run
@@ -130,7 +130,7 @@ describe Vertebra::Deferrable do
     @cb_results = []
     @main_loop = GLib::MainLoop.new(nil,nil)
     df.errback {@cb_results << 9; @main_loop.quit}
-    GLib::Timeout.add(1) {df.timeout(2); false}
+    GLib::Timeout.add(1) {df.timeout = 2; false}
     GLib::Timeout.add(900) {df.cancel_timeout; false}
     GLib::Timeout.add(4000) {@cb_results << :timeout_failed; @main_loop.quit}
     
@@ -236,10 +236,22 @@ describe Vertebra::Synapse do
     df.deferred_status?.should == :failed
   end
   
-    it 'test deferred_status?() on :failed/deferred' do
+  it 'test deferred_status?() on :failed/deferred' do
     df = Vertebra::Synapse.new
     df.condition {:failed}
     df.condition {:deferred}
+    df.deferred_status?.should == :failed
+  end
+  
+  it 'test deferred_status?() with implicit success' do
+    df = Vertebra::Synapse.new
+    df.condition {true}
+    df.deferred_status?.should == :succeeded
+  end
+  
+  it 'test deferred_status?() with implicit failure' do
+    df = Vertebra::Synapse.new
+    df.condition {false}
     df.deferred_status?.should == :failed
   end
 end

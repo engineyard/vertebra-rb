@@ -8,8 +8,7 @@ require 'forwardable'
 module Vertebra
 	module Deferrable
 
-    class CallbackFailed < Exception
-    end
+    class SetCallbackFailed < Exception; end
     
     TimeoutStatus = {}
     
@@ -22,7 +21,7 @@ module Vertebra
   			@callbacks ||= []
   			@callbacks.unshift block
   		else
-  			CallbackFailed.new
+  			SetCallbackFailed.new
   		end
   	end
 
@@ -35,7 +34,7 @@ module Vertebra
   			@errbacks ||= []
   			@errbacks.unshift block
  			else
-  			CallbackFailed.new
+  			SetCallbackFailed.new
   		end
   	end
 
@@ -56,32 +55,28 @@ module Vertebra
 
   		case @deferred_status
   		when :succeeded
-  			if @callbacks
-  				while cb = @callbacks.pop
-  					r = cb.call(*@deferred_args)
-  				end
-  			end
-  			@errbacks.clear if @errbacks
+        if @callbacks
+  				r = @callbacks.pop.call(*@deferred_args) while @callbacks.length > 0
+    			@errbacks.clear if @errbacks
+        end
   		when :failed
-  			if @errbacks
-  				while eb = @errbacks.pop
-  					r = eb.call(*@deferred_args)
-  				end
-  			end
-  			@callbacks.clear if @callbacks
+        if @errbacks
+    			r = @errbacks.pop.call(*@deferred_args) while @errbacks.length > 0
+    			@callbacks.clear if @callbacks
+    		end
   		end
   		r
   	end
 
-  	def timeout seconds
+  	def timeout= seconds
   		cancel_timeout
   		me = self
-  		@deferred_timeout = GLib::Timeout.add((seconds*1000).to_i) {me.fail}
+  		@deferred_timeout = [seconds,GLib::Timeout.add((seconds*1000).to_i) {me.fail}]
   	end
 
   	def cancel_timeout
   		if @deferred_timeout
-  			GLib::Source.remove(@deferred_timeout)
+  			GLib::Source.remove(@deferred_timeout.last)
   			@deferred_timeout = nil
   		end
   	end
