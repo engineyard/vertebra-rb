@@ -25,10 +25,10 @@ module Vertebra
 			state = :succeed
 			case @deferred_status
 			when :succeeded, :failed
-				r = [nil, @deferred_status]
+				r = @deferred_status
 			else
 				if @conditions
-					@conditions.each do |cond|
+					@conditions.reverse_each do |cond|
 						r = cond.call(self,*args)
 						if r == true
 							r = :succeeded
