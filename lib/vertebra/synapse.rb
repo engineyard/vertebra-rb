@@ -4,6 +4,14 @@ module Vertebra
 	class Synapse
 		include Vertebra::Deferrable
 
+		def [](key)
+			(@_data ||= {})[key]
+		end
+		
+		def []=(key, val)
+			(@_data ||= {})[key] = val
+		end
+
 		def condition &block
 			return unless block
 

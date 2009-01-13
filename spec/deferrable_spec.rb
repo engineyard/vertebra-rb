@@ -254,4 +254,12 @@ describe Vertebra::Synapse do
     df.condition {false}
     df.deferred_status?.should == :failed
   end
+  
+  it 'test synapse data storage' do
+    df = Vertebra::Synapse.new
+    df[:abc] = 123
+    df['seven'] = 7
+    df[:abc].should == 123
+    df['seven'].should == 7
+  end
 end
