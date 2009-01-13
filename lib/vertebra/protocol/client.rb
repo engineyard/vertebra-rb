@@ -15,137 +15,145 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
+require 'vertebra/synapse'
+
 module Vertebra
-  module Protocol
-    # The client follows a simple progression through a set of states.
-    #
-    # New
-    # Ready
-    # Consume
-    # Commit
-    #
-    # These states correspond to various network communications. In the new state,
-    # the client sends the initial "op" stanza and receives a token.
-    #
-    # In the ready state, the client waits for and responds to an Acknowledgement stanza.
-    # It can also receive a Negative Acknowledgement, which causes it to enter a "Auth Fail" state.
-    #
-    # When the "result" stanzas start coming in, it enters the Consume state, and responds for each of them.
-    #
-    # When the "final" stanza comes in, it enters the Commit state, in which it signals the code
-    # that all of the data has been received.
+	module Protocol
+		# The client follows a simple progression through a set of states.
+		#
+		# New
+		# Ready
+		# Consume
+		# Commit
+		#
+		# These states correspond to various network communications. In the new state,
+		# the client sends the initial "op" stanza and receives a token.
+		#
+		# In the ready state, the client waits for and responds to an Acknowledgement stanza.
+		# It can also receive a Negative Acknowledgement, which causes it to enter a "Auth Fail" state.
+		#
+		# When the "result" stanzas start coming in, it enters the Consume state, and responds for each of them.
+		#
+		# When the "final" stanza comes in, it enters the Commit state, in which it signals the code
+		# that all of the data has been received.
 
-    class Client
+		class Client
+			DONE_STATES = [:commit, :authfail, :error]
 
-#include DRb::DRbUndumped
+			attr_accessor :token, :agent
+			attr_reader :state, :to
 
-      DONE_STATES = [:commit, :authfail, :error]
+			def initialize(agent, op, to)
+				@agent = agent
+				@state = :new
+				@to = to
+				@op = op
+				initiator = Vertebra::Synapse.new
+				initiator.callback do
+					make_request
+				end
+				logger.debug "enqueue initiator"
+				@agent.enqueue_synapse(initiator)
+			end
 
-      attr_accessor :token, :agent
-      attr_reader :state, :to
+			def make_request
+        logger.debug "run make_request"
+				requestor = Vertebra::Synapse.new
+				iq = @op.to_iq(@to, @agent.jid)
+				requestor.condition {logger.debug "check authentication"; @agent.authenticated? ? true : :deferred}
+				requestor.callback do
+          logger.debug "in requestor callback"
+					@agent.client.send_with_reply(iq) do |answer|
+						logger.debug "Client#make_request got answer #{answer.node}"
+						if answer.sub_type == LM::MessageSubType::RESULT
+							self.token = answer.node.get_child('op')['token']
+							@agent.clients[self.token] = self
+							@state = :ready
+						else
+							@result = "Failure; a :result response was expected, but a #{answer.node.get_attribute('type')} was received."
+							@state = :error
+						end
+						logger.debug "Client#make_request exiting send_with_id"
+					end
+				end
+				logger.debug "enqueing requestor"
+				@agent.enqueue_synapse(requestor)
+				
+			end
 
-      def initialize(agent, op, to)
-        @agent = agent
-        @state = :new
-        @to = to
-        @op = op
-      end
+			def receive(iq)
+				logger.debug "Client#recieve state:#{@state} iq:#{iq.node}"
+				case @state
+				when :ready
+					process_ack_or_nack(iq)
+				when :consume
+					process_result_or_final(iq)
+				end
+			end
 
-      def make_request
-        logger.debug "Client#make_request"
-        iq = @op.to_iq(@to, @agent.jid)
-        begin
-          logger.debug "Client#make_request with #{@agent}"
-          @agent.client.send_with_reply(iq) do |answer|
-            logger.debug "Client#make_request got answer #{answer.node}"
-            if answer.sub_type == LM::MessageSubType::RESULT
-              self.token = answer.node.get_child('op')['token']
-              @agent.clients[self.token] = self
-              @state = :ready
-            else
-              @result = "Failure; a :result response was expected, but a #{answer.node.get_attribute('type')} was received."
-              @state = :error
-            end
-            logger.debug "Client#make_request exiting send_with_id"
-          end
-        rescue Vertebra::JabberError => e
-          @result = "Failure; #{e}"
-          logger.debug "Client#make_request Error #{@result}"
-          @state = :error
-        end
-        logger.debug "Client#make_request returning token #{token}"
-        token
-      end
-
-      def receive(iq)
-        logger.debug "Client#recieve state:#{@state} iq:#{iq.node}"
-        case @state
-        when :ready
-          process_ack_or_nack(iq)
-        when :consume
-          process_result_or_final(iq)
-        end
-      end
-
-      def process_ack_or_nack(iq)
-        logger.debug "Client#process_ack_or_nack: #{iq.node}"
-        if ack_nack = iq.node.get_child("ack")
-          @state = :consume
-        elsif ack_nack = iq.node.get_child("nack")
-          @result = "Auth Failure; #{ack_nack}"
-          @state = :authfail
-        end
-
-        result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
-        result_iq.node.raw_mode = true
-        result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
-        result_iq.node.set_attribute('xml:lang','en')
-        result_iq.node.value = ack_nack
-        #result_iq.node.value = ack_nack.to_s.strip
-        result_iq.root_node.set_attribute('type', 'result')
-        if @state == :authfail
-        	@agent.client.send(result_iq)
-	else
-logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
-		@agent.client.send_with_reply(result_iq) {|answer| process_result_or_final(answer)}
-        end
-      end
-
-      def process_result_or_final(iq)
-        logger.debug "Client#process_result_or_final: #{iq.node}"
-        result_iq = nil
+			def process_ack_or_nack(iq, packet_type, packet)
+        #TODO: Add state checking code so that we don't get messed up by
+        #unexpected packets.
         
-        if ele = iq.node.get_child('result')
-          raw_ele = REXML::Document.new(ele.to_s).root
-          (@results ||= []) << Vertebra::Marshal.decode(raw_ele)
-          raw_ele.children.each{|e| raw_ele.delete(e)}
-        elsif ele = iq.node.get_child('final')
+				logger.debug "Client#process_ack_or_nack: #{iq.node}"
+				case packet_type
+				when :ack
+					@state = :consume
+				when :nack
+          @result = "Auth Failure; #{packet}"
+          @state = :authfail
+				end
+
+				result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
+				result_iq.node.raw_mode = true
+				result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
+				result_iq.node.set_attribute('xml:lang','en')
+				result_iq.node.value = packet
+				result_iq.root_node.set_attribute('type', 'result')
+				
+        response = Vertebra::Synapse.new
+        response.callback do
+          logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
+          @agent.client.send(result_iq)
+        end
+        @agent.enqueue_synapse(response)
+			end
+
+			def process_result_or_final(iq, packet_type, packet)
+				logger.debug "Client#process_result_or_final: #{iq.node}"
+				case packet_type
+				when :result
+          raw_element = REXML::Document.new(packet.to_s).root
+          (@results ||= []) << Vertebra::Marshal.decode(raw_element)
+          raw_element.children.each {|e| raw_element.delete e}
+				when :final
           @state = :commit
           @agent.clients.delete(token)
-        end
-        
-        result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
-        result_iq.node.raw_mode = true
-        result_iq.node.set_attribute('id', iq.node.get_attribute('id'))
-        result_iq.node.value = ele.to_s
-        result_iq.node.set_attribute('type', 'result')
-        if @state == :commit
-          @agent.client.send(result_iq)
-        else
-          @agent.client.send_with_reply(result_iq) {|answer| process_result_or_final(answer)}
-        end
-      end
+				end
+				
+				result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
+				result_iq.node.raw_mode = true
+				result_iq.node.set_attribute('id', iq.node.get_attribute('id'))
+				result_iq.node.value = packet
+				result_iq.node.set_attribute('type', 'result')
+				response = Vertebra::Synapse.new
+				response.callback do
+          logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
+          agent.client.send(result_iq)
+				end
+				@agent.enqueue_synapse(response)
+			end
 
-      def results
-        @results ||= []
-        @results.size == 1 ? @results.first : @results
-      end
+			def results
+				@results ||= []
+				@results.size == 1 ? @results.first : @results
+			end
 
-      def done?
-        DONE_STATES.include? @state
-      end
+			def done?
+				DONE_STATES.include? @state
+			end
 
-    end  # Client
+		end  # Client
 
-  end  # Protocol
+	end  # Protocol
 end  # Vertebra

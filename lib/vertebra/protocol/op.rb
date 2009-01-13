@@ -33,9 +33,10 @@ module Vertebra
 
     def to_iq(to, from, type=LM::MessageSubType::SET)
       iq = LM::Message.new(to, LM::MessageType::IQ,type)
-      iq.node.set_attribute('from',from.to_s)
+      #iq.node.set_attribute('from',from.to_s)
       op = Vertebra::Operation.new(@op_type, Vertebra.gen_token)
 
+      iq.node.set_attribute('xml:lang','en')
       iq.node.add_child op
       op_lm = iq.node.get_child(op.name)
 
