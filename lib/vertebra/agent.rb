@@ -58,8 +58,6 @@ include DRb::DRbUndumped
 			@jid = Vertebra::JID.new(jid)
 			@jid.resource ||= 'agent'
 			@password = password
-		    	
-			@authenticated_flag = nil
 
 			@busy_jids = {}
 			@pending_clients = []
@@ -127,16 +125,24 @@ include DRb::DRbUndumped
 		def connect
 			opener = Vertebra::Synapse.new
 			opener.callback do
-				@conn.open {}
+				@conn.open {} # TODO: Loudmouth-Ruby should be fixed so this empty block isn't necessary
 				offer_authentication
 			end
 			enqueue_synapse(opener)
 		end
 		
+		def connection_exists_and_is_open?
+      @conn && @conn.open? ? true : :deferred
+		end
+		
+		def connection_is_open_and_authenticated?
+      connection_exists_and_is_open? && @conn.authenticated? ? true : :deferred
+		end
+		
 		def offer_authentication
 			authenticator = Vertebra::Synapse.new
 			authenticator.timeout = 10
-			authenticator.condition {@conn.open? ? true : :deferred}
+			authenticator.condition { connection_exists_and_is_open? }
 			authenticator.callback do
 				@conn.authenticate(@jid.node, @password, "agent") {}
 				finalize_authentication
@@ -151,16 +157,11 @@ include DRb::DRbUndumped
 		
 		def finalize_authentication
 			auth_finalizer = Vertebra::Synapse.new
-			auth_finalizer.condition {@conn.authenticated? ? true : :deferred}
+			auth_finalizer.condition { connection_is_open_and_authenticated? }
 			auth_finalizer.callback do
 				logger.debug "Authenticated"
-				@authenticated_flag = true
 			end
 			enqueue_synapse(auth_finalizer)
-		end
-
-		def authenticated?
-			@authenticated_flag
 		end
 		
 		def handle_clients

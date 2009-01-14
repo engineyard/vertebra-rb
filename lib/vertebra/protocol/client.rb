@@ -52,15 +52,14 @@ module Vertebra
 				initiator.callback do
 					make_request
 				end
-				logger.debug "enqueue initiator"
+
 				@agent.enqueue_synapse(initiator)
 			end
 
 			def make_request
-        logger.debug "run make_request"
 				requestor = Vertebra::Synapse.new
 				iq = @op.to_iq(@to, @agent.jid)
-				requestor.condition {logger.debug "check authentication"; @agent.authenticated? ? true : :deferred}
+				requestor.condition {logger.debug "check authentication"; @agent.connection_is_open_and_authenticated?}
 				requestor.callback do
           logger.debug "in requestor callback"
 					@agent.client.send_with_reply(iq) do |answer|
@@ -76,9 +75,8 @@ module Vertebra
 						logger.debug "Client#make_request exiting send_with_id"
 					end
 				end
-				logger.debug "enqueing requestor"
-				@agent.enqueue_synapse(requestor)
-				
+
+				@agent.enqueue_synapse(requestor)				
 			end
 
 			def receive(iq)
@@ -112,10 +110,12 @@ module Vertebra
 				result_iq.root_node.set_attribute('type', 'result')
 				
         response = Vertebra::Synapse.new
+        response.condition { @agent.connection_is_open_and_authenticated? }
         response.callback do
           logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
           @agent.client.send(result_iq)
         end
+        
         @agent.enqueue_synapse(response)
 			end
 
@@ -137,10 +137,12 @@ module Vertebra
 				result_iq.node.value = packet
 				result_iq.node.set_attribute('type', 'result')
 				response = Vertebra::Synapse.new
+				response.condition { @agent.connection_is_open_and_authenticated? }
 				response.callback do
           logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
           agent.client.send(result_iq)
 				end
+				
 				@agent.enqueue_synapse(response)
 			end
 
@@ -152,8 +154,6 @@ module Vertebra
 			def done?
 				DONE_STATES.include? @state
 			end
-
-		end  # Client
-
-	end  # Protocol
-end  # Vertebra
+		end
+	end
+end
