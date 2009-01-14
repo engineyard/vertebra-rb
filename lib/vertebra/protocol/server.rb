@@ -65,6 +65,7 @@ module Vertebra
 				result_iq.root_node.set_attribute('type', 'result')
 				result_iq.node.value = op
 				responder = Vertebra::Synapse.new
+				responder.condition { @agent.connection_is_open_and_authenticated? }
 				responder.callback do
 					@agent.client.send(result_iq)
 					@state = :verify
@@ -86,11 +87,13 @@ module Vertebra
 				res << {'from' => @iq.node.get_attribute("from").to_s, 'to' => @iq.node.get_attribute("to").to_s}
 
         authorizer = Vertebra::Synapse.new
+        authorizer.condition { @agent.connection_is_open_and_authenticated? }
         authorizer.callback do
           auth_client = @agent.direct_op('/security/authorize', @agent.herault_jid, *res)
           
           # TODO: Should this have a timeout on it? I think probably, yes.
           verifier = Vertebra::Synapse.new
+          verifier.condition { @agent.connection_is_open_and_authenticated? }
           verifier.condition { auth_client.done? ? true : :deferred }
           verifier.callback do
             if auth_client.results['response'] == 'authorized'
@@ -113,6 +116,7 @@ module Vertebra
 				iq.node.value = ack.to_s
 				
 				acknowledger = Vertebra::Synapse.new
+				acknowledger.condition { @agent.connection_is_open_and_authenticated? }
 				acknowledger.callback do
 					@agent.client.send_with_reply(iq) do |answer|
 						if answer.sub_type == LM::MessageSubType::RESULT
@@ -133,6 +137,7 @@ module Vertebra
 				iq.node.raw_mode = true
 				iq.node.value = nack.to_s
 				terminator = Vertebra::Synapse.new
+				terminator.condition { @agent.connection_is_open_and_authenticated? }
 				terminator.callback do
           # This is probably wrong; I am betting this code should probably
           # expect the response to the nack, so that it can retry.
@@ -148,9 +153,11 @@ module Vertebra
 				@state = :producing
 				logger.debug "Server#process_operation: #{@iq.node.get_child('op').to_s}"
 				dispatcher = Vertebra::Synapse.new
+				dispatcher.condition { @agent.connection_is_open_and_authenticated? }
 				dispatcher.callback do
           result_iq = nil
           notifier = Vertebra::Synapse.new
+          notifier.condition { @agent.connection_is_open_and_authenticated? }
           
           begin
             logger.debug "handling #{@op}"
