@@ -166,7 +166,7 @@ module Vertebra
         			result_iq.node.raw_mode = true
       				result_iq.node.set_attribute("id", @iq.node.get_attribute("id"))
     					result_iq.root_node.set_attribute('type', 'result')
-    					logger.debug "sending #{result_iq}"
+    					logger.debug "SENDING #{result_iq}"
   						@agent.client.send(result_iq)
 
   						result_tag = Vertebra::Result.new(token)
@@ -204,6 +204,7 @@ module Vertebra
    							result_iq.node.raw_mode = true
    							final_tag = ::Vertebra::Final.new(token)
    							final_iq.node.add_child final_tag
+   							logger.debug "  Send Final"
    							@agent.client.send_with_reply(final_iq) do |answer|
    								if answer.sub_type == LM::MessageSubType::RESULT
    									@state = :commit

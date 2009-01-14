@@ -29,7 +29,6 @@ end
 module Vertebra
 	class Agent
 
-include DRb::DRbUndumped
 		include Vertebra::Daemon
 
 		attr_accessor :drb_port
@@ -77,7 +76,7 @@ include DRb::DRbUndumped
 			
 			# TODO: Add options for these intervals, instead of a hardcoded timing?
 			GLib::Timeout.add(2) {fire_synapses; true}
-			@busy_check_timer = Time.now
+			GLib::Timeout.add(1000) {clear_busy_jids; true}
 
 			set_callbacks
 
@@ -163,46 +162,26 @@ include DRb::DRbUndumped
 			enqueue_synapse(auth_finalizer)
 		end
 		
-		def handle_clients
-			@main_loop.quit if @authenticated_flag == false
-			return unless @authenticated_flag
- 
-			# Check all active connections for ones that are done; only do this
-			# at most once every BUSY_CHECK_INTERVAL seconds.
-			#
-			# Then dispatch and pending clients which are not being blocked by
-			# existing, active clients to the same jid.
+		def defer_on_busy_jid?(jid)
+			@busy_jids.has_key?(jid) ? :deferred : :succeeded
+		end
+
+		def set_busy_jid(jid,client)
+			@busy_jids[jid] = client
+		end
+		
+		def remove_busy_jid(jid)
+			@busy_jids.delete(jid)
+		end
+
+		def clear_busy_jids
+			# Busy jids _should_ be cleared by the protocol, but just in case, a
+			# timer will run this periodically to catch anything that might somehow
+			# be missed.  TODO: Prove this is unnecessary paranoia.
 			
-			if Time.now - @busy_check_timer >= BUSY_CHECK_INTERVAL
-				new_list = []
-				# This might not be the ideal way to do this. It should be benchmarked
-				# and compared to random access deletes in arrays and other data
-				# structures, if performance here becomes an issue.
-				while active_client = @active_clients.pop
-#logger.debug "ACTIVE_HANDLER: (#{@active_clients.length}) #{active_client.to} -- #{active_client.done?}"
-					if active_client.done?
-						@busy_jids.delete active_client.to
-					else
-						new_list << active_client
-					end
-				end
-				@active_clients = new_list
-
-				@busy_check_timer = Time.now
+			@busy_jids.each do |jid, client|
+				@busy_jids.delete(jid) if client.done?
 			end
-
-			new_list = []
-			while pending_client = @pending_clients.pop
-				if @busy_jids.has_key? pending_client.to 
-					new_list << pending_client
-				else
-					@active_clients << pending_client
-					@busy_jids[pending_client.to] = true
-					pending_client.make_request
-				end
-			end
-			@pending_clients = new_list
-
 		end
 
 		def set_callbacks

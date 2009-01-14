@@ -49,7 +49,10 @@ module Vertebra
 				@to = to
 				@op = op
 				initiator = Vertebra::Synapse.new
+				initiator.condition { @agent.connection_is_open_and_authenticated? }
+				initiator.condition { @agent.defer_on_busy_jid?(@to) }
 				initiator.callback do
+					@agent.set_busy_jid(@to,self)
 					make_request
 				end
 
@@ -140,7 +143,8 @@ module Vertebra
 				response.condition { @agent.connection_is_open_and_authenticated? }
 				response.callback do
           logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
-          agent.client.send(result_iq)
+          @agent.client.send(result_iq)
+          @agent.remove_busy_jid(@to)
 				end
 				
 				@agent.enqueue_synapse(response)
