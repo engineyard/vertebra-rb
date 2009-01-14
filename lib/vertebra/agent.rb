@@ -361,7 +361,7 @@ module Vertebra
           ack_handler = Vertebra::Synapse.new
           ack_handler[:client] = client
           ack_handler[:state] = :ack
-          ack_handler.callback {client.process_ack_or_nack(iq, :ack, ack)}
+          ack_handler.callback {logger.debug "ack"; client.process_ack_or_nack(iq, :ack, ack)}
         end
         enqueue_synapse(ack_handler)
         unhandled = false 
@@ -373,7 +373,7 @@ module Vertebra
           nack_handler = Vertebra::Synapse.new
           nack_handler[:client] = client
           nack_handler[:state] = :nack
-          nack_handler.callback {client.process_ack_or_nack(iq, :nack, nack)}
+          nack_handler.callback {logger.debug "nack"; client.process_ack_or_nack(iq, :nack, nack)}
         end
         enqueue_synapse(nack_handler)
         unhandled = false
@@ -385,7 +385,7 @@ module Vertebra
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = client
           result_handler[:state] = :result
-          result_handler.callback {client.process_result_or_final(iq, :result, result)}
+          result_handler.callback {logger.debug "result"; client.process_result_or_final(iq, :result, result)}
         end
         enqueue_synapse(result_handler)
         unhandled = false 
@@ -397,10 +397,14 @@ module Vertebra
           final_handler = Vertebra::Synapse.new
           final_handler[:client] = client
           final_handler[:state] = :final
-          final_handler.callback {client.process_result_or_final(iq, :final, final)}
+          final_handler.callback {logger.debug "final"; client.process_result_or_final(iq, :final, final)}
         end
         enqueue_synapse(final_handler)
         unhandled = false
+      end
+      
+      if unhandled
+				logger.debug "#{iq} getting dropped, unhandled"
       end
 		end
 
