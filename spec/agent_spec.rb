@@ -17,7 +17,6 @@
 
 require File.dirname(__FILE__) + '/spec_helper'
 require 'vertebra'
-require 'vertebra/base_agent'
 
 describe "An instance of Vertebra::Agent" do
 
