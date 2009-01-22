@@ -166,7 +166,7 @@ module Vertebra
         			result_iq.node.raw_mode = true
       				result_iq.node.set_attribute("id", @iq.node.get_attribute("id"))
     					result_iq.root_node.set_attribute('type', 'result')
-    					logger.debug "SENDING #{result_iq}"
+    					logger.debug "SENDING #{result_iq.node}"
   						@agent.client.send(result_iq)
 
   						result_tag = Vertebra::Result.new(token)
