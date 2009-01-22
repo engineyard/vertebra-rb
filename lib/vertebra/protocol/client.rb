@@ -37,6 +37,12 @@ module Vertebra
 		# When the "final" stanza comes in, it enters the Commit state, in which it signals the code
 		# that all of the data has been received.
 
+		# TODO: In two places in the original code, an IQ packet was being sent without
+		# the protocol caring about the response.  This really is broken behavior, and
+		# should be fixed.  The reason -- if that 'result' packet doesn't arrive in a
+		# reasonable amount of time, then that's a retry situation.  The way the code
+		# is right now, though, that particular failure will never be detected.
+
 		class Client
 			DONE_STATES = [:commit, :authfail, :error]
 
@@ -49,7 +55,9 @@ module Vertebra
 				@to = to
 				@op = op
 				initiator = Vertebra::Synapse.new
+				initiator[:name] = 'initiator'
 				initiator.condition { @agent.connection_is_open_and_authenticated? }
+				# TODO: The logic that deals with this can be messed up, somehow.  Debug it.
 				initiator.condition { @agent.defer_on_busy_jid?(@to) }
 				initiator.callback do
 					@agent.set_busy_jid(@to,self)
@@ -61,8 +69,9 @@ module Vertebra
 
 			def make_request
 				requestor = Vertebra::Synapse.new
+				requestor[:name] = 'requestor'
 				iq = @op.to_iq(@to, @agent.jid)
-				requestor.condition {logger.debug "check authentication"; @agent.connection_is_open_and_authenticated?}
+				requestor.condition {@agent.connection_is_open_and_authenticated?}
 				requestor.callback do
           logger.debug "in requestor callback"
 					@agent.client.send_with_reply(iq) do |answer|
@@ -113,6 +122,7 @@ module Vertebra
 				result_iq.root_node.set_attribute('type', 'result')
 				
         response = Vertebra::Synapse.new
+        response[:name] = 'process_ack_or_nack response'
         response.condition { @agent.connection_is_open_and_authenticated? }
         response.callback do
           logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
@@ -140,6 +150,7 @@ module Vertebra
 				result_iq.node.value = packet
 				result_iq.node.set_attribute('type', 'result')
 				response = Vertebra::Synapse.new
+				response[:name] = 'process_result_or_final response'
 				response.condition { @agent.connection_is_open_and_authenticated? }
 				response.callback do
           logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
