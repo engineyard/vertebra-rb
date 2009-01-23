@@ -60,7 +60,8 @@ module Vertebra
 			@busy_jids = {}
 			@pending_clients = []
 			@active_clients = []
-			
+			@connection_in_progress = false
+			@authentication_in_progress = false
 			@synapse_queue = []
 			
 			@advertise_timer_started = false
@@ -71,12 +72,11 @@ module Vertebra
 			@conn = LM::Connection.new
 			@conn.jid = @jid.to_s
 
-			trap('SIGINT') {@main_loop.quit}
-			trap('SIGTERM') {@main_loop.quit}
+			install_signal_handlers
+			install_periodic_actions
 			
 			# TODO: Add options for these intervals, instead of a hardcoded timing?
-			GLib::Timeout.add(2) {fire_synapses; true}
-			GLib::Timeout.add(1000) {clear_busy_jids; true}
+
 
 			set_callbacks
 
@@ -86,9 +86,23 @@ module Vertebra
 
 			# register actors specified in the config
 			@dispatcher.register(opts[:actors]) if opts[:actors]
-
 		end
 
+		def install_signal_handlers
+			trap('SIGINT') {@main_loop.quit}
+			trap('SIGTERM') {@main_loop.quit}
+			trap('SIGUSR1') {GC.start; File.open('/tmp/objdump','w+') {|fh| ObjectSpace.each_object {|o| fh.puts "#{o} -- #{o.inspect}"}}; GC.start}
+		end
+		
+		def install_periodic_actions
+			GLib::Timeout.add(2) { fire_synapses; true }
+			GLib::Timeout.add(1000) { clear_busy_jids; true }
+			GLib::Timeout.add(2000) { monitor_connection_status; true }
+			GLib::Timeout.add(801) { GC.start; true}
+			GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.			
+			GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
+		end
+		
     # Is this layer necessary?
     def client
       @conn
@@ -120,11 +134,32 @@ module Vertebra
 			@synapse_queue = new_synapse_queue
 		end
 
+		def monitor_connection_status
+			unless @connection_in_progress
+				# Check to see if the connection is open and authenticated.  Try to deal
+				# with it if it is not.
+				if !@conn.open?
+					connect
+				elsif !@authentication_in_progress && !@conn.authenticated?
+					offer_authentication
+				end
+			end
+		end
+		
 		def connect
 			opener = Vertebra::Synapse.new
 			opener.callback do
-				@conn.open {} # TODO: Loudmouth-Ruby should be fixed so this empty block isn't necessary
-				offer_authentication
+				unless @conn.open?
+					logger.debug "opening connection"
+					success = @conn.open {} # TODO: Loudmouth-Ruby should be fixed so this empty block isn't necessary
+				
+					if success
+						offer_authentication
+					else
+						@connection_in_progress = false
+						logger.debug "open failed"
+					end
+				end
 			end
 			enqueue_synapse(opener)
 		end
@@ -142,13 +177,19 @@ module Vertebra
 			authenticator.timeout = 10
 			authenticator.condition { connection_exists_and_is_open? }
 			authenticator.callback do
-				@conn.authenticate(@jid.node, @password, "agent") {}
-				finalize_authentication
+				unless @conn.authenticated?
+					logger.debug "authenticating"
+					success = @conn.authenticate(@jid.node, @password, "agent") {}
+					if success
+						finalize_authentication
+					else
+						logger.debug "Failure while presenting authentication"
+					end
+					@connection_in_progress = @authentication_in_progress = false
+				end
 			end
 			authenticator.errback do
-				logger.debug "Authentication Failed"
-				@authentication_flag = false
-				@main_loop.quit
+				logger.debug "Authentication timed out"
 			end
 			enqueue_synapse(authenticator)
 		end
@@ -157,6 +198,8 @@ module Vertebra
 			auth_finalizer = Vertebra::Synapse.new
 			auth_finalizer.condition { connection_is_open_and_authenticated? }
 			auth_finalizer.callback do
+				# If any other post_authentication steps are required, this is where
+				# to place them.
 				logger.debug "Authenticated"
 			end
 			enqueue_synapse(auth_finalizer)
@@ -187,17 +230,15 @@ module Vertebra
 		def set_callbacks
 			@conn.set_disconnect_handler do |reason|
 				logger.debug "Disconnected -- #{reason}"
-				@main_loop.quit
-			end
-
-			@conn.add_message_handler(LM::MessageType::MESSAGE) do |msg|
-			logger.debug "GOT MSG #{msg.to_s}"
-			handle_chat_message(msg)
+				reconnector = Vertebra::Synapse.new
+				# Immediately try to reconnect on a disconnect.
+				reconnector.callback {connect}
+				enqueue_synapse(reconnector)
 			end
 
 			@conn.add_message_handler(LM::MessageType::IQ) do |iq|
-			logger.debug "GOT IQ #{iq.node.class}"
-			handle_iq(iq)
+				logger.debug "GOT IQ #{iq.node.class}"
+				handle_iq(iq)
 			end    
 		end
 
@@ -210,13 +251,7 @@ module Vertebra
 			else
 				logger.info "Starting DRb on port #{@drb_port}" if @opts[:use_drb]
 			end
-
-			logger.info "Connecting as #{@jid}..."
-			connect
-			logger.info "Connected."
-			#add_default_callbacks
 			
-			advertise_resources
 			@main_loop.run
 		end
 
@@ -224,35 +259,22 @@ module Vertebra
 			op = Vertebra::Op.new(op_type, *args)
 			client = Vertebra::Protocol::Client.new(self, op, to)
 			logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
-			#client.make_request
-			#@pending_clients << client
 			client
 		end
 
 		def op(op_type, to, *args)
-			client = direct_op(op_type, to, *args)
-			until client.done?
-				sleep 0.005
-			end
-			client.results
+# The old op() model doesn't work in an evented architecture, since it is blocking.
+# TODO: Figure out if we need to simulate it somehow (i.e. fake fibers with threads
+# to make it look blocking) or if direct_op() is sufficient.
 		end
 
 		# #discover takes as args a list of resources either in string form
 		# (/foo/bar) or as instances of Vertebra::Resource.  It returns a list
 		# of jids that will handle any of the resources.
-		def discover(*resources)
-			logger.debug "DISCOVERING: #{resources.inspect} on #{@herault_jid}"
-			op('/security/discover', @herault_jid, *resources.collect {|r| Vertebra::Resource === r ? r.to_s : r})
-		end
-
-
-		def legacy_request(op_type, *args)
-			params = args.pop if args.last.is_a? Hash
-			jids = discover(*args)
-			args.push params if params
-			gather(scatter(jids['jids'], op_type, *args))
-		end
-
+#		def discover(*resources)
+#			logger.debug "DISCOVERING: #{resources.inspect} on #{@herault_jid}"
+#			op('/security/discover', @herault_jid, *resources.collect {|r| Vertebra::Resource === r ? r.to_s : r})
+#		end
 
 		def request(op_type, *raw_args)
 			# If the scope of the request is going to be specified, it should be
@@ -404,25 +426,8 @@ module Vertebra
       end
       
       if unhandled
-				logger.debug "#{iq} getting dropped, unhandled"
+				logger.debug "#{iq.node} getting dropped, unhandled"
       end
-		end
-
-		def deliver(recipient, msg)
-			m = LM::Message.new(recipient, LM::MessageType::MESSAGE)
-			m.node.add_child('body', msg)
-			@conn.send(m)
-		end
-
-		def handle_order(body)
-			case body
-			when 'resources'
-				%Q{I am #{@jid}\nI provide these resources:\n#{@dispatcher.actors.join("\n") rescue nil}}
-			when 'stats'
-				Vertebra::Agent.default_status
-			else
-				# offer an api to authorized actor methods
-			end
 		end
 
 		def advertise_op(resources, ttl = @ttl)
