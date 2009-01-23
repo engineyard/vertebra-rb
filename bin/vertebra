@@ -167,6 +167,11 @@ EHELP
 		end
 		
 		def self.dispatch_request
+			# TODO: How to convert this to the event loop architecture:
+			#   Create the agent object.
+			#   Create a timer which will submit the request to the agent.
+			#   Create another recurring timer which checks the request for
+			#     completion and returns the results when it has finished.
 			puts "Initializing agent with #{@jid}/#{@password}" if @verbose
 			agent = Vertebra::Agent.new(@jid, @password, @opts)
 			client = Jabber::Client.new(Jabber::JID.new(@jid))
