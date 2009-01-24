@@ -56,6 +56,7 @@ module Vertebra
 		def self.parse_commandline
 			@scope = :all
 			@config_file = '~/.vertebra/vertebra'
+			@client = nil
 			@jid = nil
 			@password = nil
 			@verbose = false
@@ -172,35 +173,43 @@ EHELP
 			#   Create a timer which will submit the request to the agent.
 			#   Create another recurring timer which checks the request for
 			#     completion and returns the results when it has finished.
+			
 			puts "Initializing agent with #{@jid}/#{@password}" if @verbose
 			agent = Vertebra::Agent.new(@jid, @password, @opts)
-			client = Jabber::Client.new(Jabber::JID.new(@jid))
-			client.connect
-			client.auth(@password)
-			agent.client = client
-			Thread.new {agent.add_default_callbacks; agent.start_event_loop}
-			if @discovery_only
-				puts "Doing discovery #{@parsed_args.inspect}" if @verbose
-				resources = @parsed_args.select {|r| Vertebra::Resource === r}
-				results = agent.discover(*resources)
-			else
-				puts "Making request for #{@op}" if @verbose
-				results = {}
-				agent.request(@op,@scope,*@parsed_args).each do |source, response|
-					filtered_responses = []
-					response.each do |individual_response|
-						next if String === individual_response['response'] and individual_response['response'] =~ /^Undefined OP:/
-						filtered_responses << individual_response
-					end
-					results[source] = filtered_responses
-				end
-			end
 			
-			if @yaml
-				puts results.to_yaml
-			else
-				puts results.inspect
+			GLib::Timeout.add(10) do
+							if @discovery_only
+											puts "Doing discovery #{@parsed_args.inspect}" if @verbose
+											@client = agent.discover(*resources)											
+							end
 			end
+#			client = Jabber::Client.new(Jabber::JID.new(@jid))
+			#client.connect
+			#client.auth(@password)
+			#agent.client = client
+			#Thread.new {agent.add_default_callbacks; agent.start_event_loop}
+			#if @discovery_only
+			#	puts "Doing discovery #{@parsed_args.inspect}" if @verbose
+			#	resources = @parsed_args.select {|r| Vertebra::Resource === r}
+			#	results = agent.discover(*resources)
+			#else
+			#	puts "Making request for #{@op}" if @verbose
+			#	results = {}
+			#	agent.request(@op,@scope,*@parsed_args).each do |source, response|
+			#		filtered_responses = []
+			#		response.each do |individual_response|
+			#			next if String === individual_response['response'] and individual_response['response'] =~ /^Undefined OP:/
+			#			filtered_responses << individual_response
+			#		end
+			#		results[source] = filtered_responses
+			#	end
+			#end
+			#
+			#if @yaml
+			#	puts results.to_yaml
+			#else
+			#	puts results.inspect
+			#end
 		end
 		
 		def self.run

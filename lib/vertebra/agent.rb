@@ -123,9 +123,9 @@ module Vertebra
 				ds = synapse.deferred_status?
 				case ds
 				when :succeeded
-					synapse.set_deferred_status(:succeeded)
+					synapse.set_deferred_status(:succeeded,synapse)
 				when :failed
-					synapse.set_deferred_status(:failed)
+					synapse.set_deferred_status(:failed,synapse)
 				else
 					new_synapse_queue << synapse
 				end
@@ -271,10 +271,10 @@ module Vertebra
 		# #discover takes as args a list of resources either in string form
 		# (/foo/bar) or as instances of Vertebra::Resource.  It returns a list
 		# of jids that will handle any of the resources.
-#		def discover(*resources)
-#			logger.debug "DISCOVERING: #{resources.inspect} on #{@herault_jid}"
-#			op('/security/discover', @herault_jid, *resources.collect {|r| Vertebra::Resource === r ? r.to_s : r})
-#		end
+		def discover(*resources)
+			logger.debug "DISCOVERING: #{resources.inspect} on #{@herault_jid}"
+			direct_op('/security/discover', @herault_jid, *resources.collect {|r| Vertebra::Resource === r ? r.to_s : r})
+		end
 
 		def request(op_type, *raw_args)
 			# If the scope of the request is going to be specified, it should be
@@ -305,62 +305,118 @@ module Vertebra
 					cooked_args << arg
 				end
 			end
-			jids = discover(op_type,*resources)
-			if Array === jids
-				target_jids = jids.concat(specific_jids)
-			else
-				target_jids = jids['jids'].concat(specific_jids)
-			end
 			
-			if scope == :all
-				gather(scatter(target_jids, op_type, *cooked_args))
-			else
-				gather_first(scatter(target_jids, op_type, *cooked_args))
+			discoverer = Vertebra::Synapse.new
+			discoverer.callback do
+					requestor = Vertebra::Synapse.new
+					discoverer[:client] = discover(op_type,*resources)
+					requestor.condition do
+						discoverer[:client].done? ? :succeeded : :deferred
+					end
+					requestor.callback do
+						jids = discoverer[:client].results
+						if Array === jids
+							target_jids = jids.concat(specific_jids)
+						else
+							target_jids = jids['jids'].concat(specific_jids)
+						end
+						
+						if scope == :all
+							gather(discoverer, target_jids, op_type, *cooked_args)
+						else
+							gather_first(discoverer, target_jids, op_type, *cooked_args)
+						end
+					end
+					
+					enqueue_synapse(requestor)
 			end
+			enqueue_synapse(discoverer)
+			
+			discoverer
 		end
 
-
+		# This method queue an op for each jid, and returns a hash containing the
+		# client protocol object for each.
 		def scatter(jids, op_type, *args)
 			ops = {}
 			jids.each do |jid|
 				logger.debug "scatter# #{op_type}/#{jid}/#{args.inspect}"
 				ops[jid] = direct_op(op_type, jid, *args)
+				end
 			end
 			ops
 		end
 
-		def single_scatter_and_gather(jids, op_type, *args)
+		def gather_first(discoverer, jids, op_type, *args)
+			ops = scatter(jids, op_type, *args)
 			errors = [:error]
 			result = nil
-			jids.each do |jid|
-				op = direct_op(op_type, jid, *args)
-				until client.done?
-					sleep(0.1)
+			
+			gatherer = Vertebra::Synapse.new
+			# Check to see if at least one of the clients has finished as is in
+			# The :commit state, or that all of them have finished and none were
+			# in the :commit state.
+			gatherer.condition do
+				finished = false
+				num_finished = 0
+				
+				ops.each do |jid, client|
+					num_finished += 1
+					if client.done? && client.state == :commit
+						finished = true
+						break
+					end
 				end
-				if client.state == :commit # A completion
-					result = client.results
-					break
-				elsif client.state == :error
-					errors << client.results
+				
+				if finished
+					:succeeded
+				elsif num_finished == ops.size
+					:failed
+				else
+					:deferred
 				end
 			end
 			
-			result ? result : errors
-		end
-
-		def gather(ops={})
-			results = []
-			while ops.size > 0 do
+			# If there was a successful op, find it and return its result.
+			gatherer.callback do
+				result = nil
 				ops.each do |jid, client|
-					logger.debug "#{jid} -- #{client.state}"
-					if client.done?
-						results << client.results unless client.results.empty?
-						ops.delete(jid)
+					if client.done? && client.state == :commit
+						result = client.results
+						break
 					end
 				end
-				sleep(1)
+				
+				discoverer[:results] = result
 			end
-			results
+			
+			# If there were no successful results, return the array of errors.
+			gatherer.errback do
+				results = [:error]
+				ops.each do |jid, client|
+					results << client.results unless client.results.empty?
+				end
+				discoverer[:results] = results
+			end
+			enqueue_synapse(gatherer)
+		end
+
+		def gather(discoverer, jids, op_type, *args)
+			ops = scatter(jids, op_type, *args)
+			
+			gatherer = Vertebra::Synapse.new
+			gatherer.condition do
+				num_finished = 0
+				ops.each { |jid, client| num_finished += 1 if client.done? }
+				num_finished == ops.size ? :succeeded : :deferred
+			end
+			gatherer.callback do
+				results = []
+				ops.each { |jid, client| results << client.results unless client.results.empty? }
+				
+				discoverer[:results] = results
+			end
+			enqueue_synapse(gatherer)
 		end
 
 		def handle_iq(iq)

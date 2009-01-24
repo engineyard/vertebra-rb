@@ -49,13 +49,6 @@ module Vertebra
 			client.results
 		end
 
-#    def legacy_request(op_type, *args)
-#      params = args.pop if args.last.is_a? Hash
-#      jids = discover(*args)
-#      args.push params if params
-#      gather(scatter(jids['jids'], op_type, *args))
-#    end
-
 		def request(op_type, *raw_args)
 			# If the scope of the request is going to be specified, it should be
 			# passed via a symbol as the first arg -- :single or :all.  That arg
