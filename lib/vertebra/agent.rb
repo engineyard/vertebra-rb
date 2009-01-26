@@ -88,9 +88,13 @@ module Vertebra
 			@dispatcher.register(opts[:actors]) if opts[:actors]
 		end
 
+		def stop
+			@main_loop.quit
+		end
+		
 		def install_signal_handlers
-			trap('SIGINT') {@main_loop.quit}
-			trap('SIGTERM') {@main_loop.quit}
+			trap('SIGINT') {stop}
+			trap('SIGTERM') {stop}
 			trap('SIGUSR1') {GC.start; File.open('/tmp/objdump','w+') {|fh| ObjectSpace.each_object {|o| fh.puts "#{o} -- #{o.inspect}"}}; GC.start}
 		end
 		
@@ -342,7 +346,6 @@ module Vertebra
 			jids.each do |jid|
 				logger.debug "scatter# #{op_type}/#{jid}/#{args.inspect}"
 				ops[jid] = direct_op(op_type, jid, *args)
-				end
 			end
 			ops
 		end
