@@ -501,10 +501,12 @@ module Vertebra
 		end
 
 		def advertise_resources
-			advertise_op(provided_resources)
-			unless @advertise_timer_started
-				GLib::Timeout.add_seconds(@ttl * 0.9) {advertise_op(provided_resources,@ttl)} 
-				@advertise_timer_started = true
+			unless provided_resources.empty?
+				advertise_op(provided_resources)
+				unless @advertise_timer_started
+					GLib::Timeout.add_seconds(@ttl * 0.9) {advertise_op(provided_resources,@ttl)} 
+					@advertise_timer_started = true
+				end
 			end
 		end
 

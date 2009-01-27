@@ -166,62 +166,52 @@ EHELP
 				end
 			end
 		end
-		
+				
 		def self.dispatch_request
-			# TODO: How to convert this to the event loop architecture:
-			#   Create the agent object.
-			#   Create a timer which will submit the request to the agent.
-			#   Create another recurring timer which checks the request for
-			#     completion and returns the results when it has finished.
-			
 			puts "Initializing agent with #{@jid}/#{@password}" if @verbose
 			agent = Vertebra::Agent.new(@jid, @password, @opts)
 			
 			GLib::Timeout.add(10) do
 				if @discovery_only
-					puts "Doing discovery #{@parsed_args.inspect}" if @verbose
-					@client = agent.discover(*resources)
+					puts "Doing discovery #{[@op,@parsed_args].flatten.inspect}" if @verbose
+					resources = @parsed_args.select {|r| Vertebra::Resource == r}
+					@client = agent.discover(@op,*resources)
+					GLib::Timeout.add(50) do
+						if @client.done?
+							show_results(@client.results)
+							agent.stop
+							false
+						else
+							true
+						end
+					end
 				else
-					puts "Making request for #{op}" if @verbose
+					puts "Making request for #{@op}" if @verbose
 					request = agent.request(@op,@scope,*@parsed_args)
 					GLib::Timeout.add(50) do
 						if request[:results]
 							agent.stop
+							show_results(request[:results])
+							false
+						else
+							true
 						end
-					end
+					end # GLib::Timeout
 				end
 				false
 			end
 			
-#			client = Jabber::Client.new(Jabber::JID.new(@jid))
-			#client.connect
-			#client.auth(@password)
-			#agent.client = client
-			#Thread.new {agent.add_default_callbacks; agent.start_event_loop}
-			#if @discovery_only
-			#	puts "Doing discovery #{@parsed_args.inspect}" if @verbose
-			#	resources = @parsed_args.select {|r| Vertebra::Resource === r}
-			#	results = agent.discover(*resources)
-			#else
-			#	puts "Making request for #{@op}" if @verbose
-			#	results = {}
-			#	agent.request(@op,@scope,*@parsed_args).each do |source, response|
-			#		filtered_responses = []
-			#		response.each do |individual_response|
-			#			next if String === individual_response['response'] and individual_response['response'] =~ /^Undefined OP:/
-			#			filtered_responses << individual_response
-			#		end
-			#		results[source] = filtered_responses
-			#	end
-			#end
-			#
-			#if @yaml
-			#	puts results.to_yaml
-			#else
-			#	puts results.inspect
-			#end
+			agent.start
 		end
-		
+
+		def self.show_results(results)
+			if @yaml
+				puts results.to_yaml
+			else
+				puts results.inspect	
+			end
+		end		
+
 		def self.run
 			parse_commandline
 			read_config_file
