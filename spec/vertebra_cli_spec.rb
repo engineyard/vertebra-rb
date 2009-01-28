@@ -118,7 +118,7 @@ describe Vertebra::VertebraCLI do
 
   it "self.show_results" do
     orig_stdout = $stdout
-    capture_stdout = StringIO.new
+    captured_stdout = StringIO.new
     $stdout = captured_stdout
     # TODO: finish writing the test for this.
     $stdout = orig_stdout
