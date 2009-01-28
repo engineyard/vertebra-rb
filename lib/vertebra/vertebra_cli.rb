@@ -19,12 +19,19 @@ module Vertebra
 	end	
 	
 	class VertebraCLI
-		
 		def self.read_config_file
 			@opts = {}
-			config_file_path = File.expand_path(@config_file)
-			if File.exist? config_file_path
-				@opts = YAML.load(File.read(config_file_path))
+			cfg = nil
+			if String === @config_file
+				path = File.expand_path(@config_file)
+				if File.exist? path
+					cfg = File.read(path)
+				end
+			elsif @config_file.respond_to?(:read)
+				cfg = @config_file.read
+			end
+			if cfg
+				@opts = YAML.load(cfg)
 				@jid ||= @opts['jid']
 				@password ||= @opts['password']
 				@opts.delete('jid')
