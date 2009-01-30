@@ -102,7 +102,7 @@ module Vertebra
 			GLib::Timeout.add(2) { fire_synapses; true }
 			GLib::Timeout.add(1000) { clear_busy_jids; true }
 			GLib::Timeout.add(2000) { monitor_connection_status; true }
-			GLib::Timeout.add(801) { GC.start; true}
+			GLib::Timeout.add(800) { GC.start; true}
 			GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.			
 			GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
 		end
@@ -153,7 +153,8 @@ module Vertebra
 		def connect
 			opener = Vertebra::Synapse.new
 			opener.callback do
-				unless @conn.open?
+				unless @conn.open? || @connection_in_progress
+					@connection_in_progress = true
 					logger.debug "opening connection"
 					success = @conn.open {} # TODO: Loudmouth-Ruby should be fixed so this empty block isn't necessary
 				
@@ -181,6 +182,7 @@ module Vertebra
 			authenticator.timeout = 10
 			authenticator.condition { connection_exists_and_is_open? }
 			authenticator.callback do
+				@connection_in_progress = false
 				unless @conn.authenticated?
 					logger.debug "authenticating"
 					success = @conn.authenticate(@jid.node, @password, "agent") {}
@@ -426,7 +428,16 @@ module Vertebra
 			logger.debug "handle_iq: #{iq.node}"
       unhandled = true
       
-			if op = iq.node.get_child('op')
+      if iq.sub_type == LM::MessageSubType::ERROR
+				error = iq.node.get_child('error')
+				# Check to see if the error is one we want to retry.
+				# If it is...RETRY
+				#   We need to keep track of the _last_ packet sent for any given
+				#   token, since there's only one in the air at any time, right?
+				# If it is not...log & ABORT
+      end
+      
+			if unhandled && op = iq.node.get_child('op')
         if op['token'].size == 32
           # The protocol object will take care of enqueing itself.
           Vertebra::Protocol::Server.new(self,iq)
