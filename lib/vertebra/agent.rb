@@ -107,14 +107,14 @@ module Vertebra
 			GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
 		end
 		
-    # Is this layer necessary?
-    def client
-      @conn
-    end
+		# Is this layer necessary?
+		def client
+			@conn
+		end
 
-    def clear_queues
-      # I don't think there's any reason for this, anymore.
-    end
+		def clear_queues
+			# I don't think there's any reason for this, anymore.
+		end
     
 		def enqueue_synapse(synapse)
 			@synapse_queue << synapse
@@ -123,7 +123,7 @@ module Vertebra
 		def fire_synapses
 			new_synapse_queue = []
 			@synapse_queue.each do |synapse|
-        next unless synapse && synapse.respond_to?(:deferred_status?) # Defend against somehow getting a non-synapse in here.
+				next unless synapse && synapse.respond_to?(:deferred_status?) # Defend against somehow getting a non-synapse in here.
 				ds = synapse.deferred_status?
 				case ds
 				when :succeeded
@@ -170,11 +170,11 @@ module Vertebra
 		end
 		
 		def connection_exists_and_is_open?
-      @conn && @conn.open? ? true : :deferred
+			@conn && @conn.open? ? true : :deferred
 		end
 		
 		def connection_is_open_and_authenticated?
-      connection_exists_and_is_open? && @conn.authenticated? ? true : :deferred
+			connection_exists_and_is_open? && @conn.authenticated? ? true : :deferred
 		end
 		
 		def offer_authentication
@@ -196,6 +196,7 @@ module Vertebra
 			end
 			authenticator.errback do
 				logger.debug "Authentication timed out"
+				@connection_in_progress = false
 			end
 			enqueue_synapse(authenticator)
 		end
@@ -426,16 +427,16 @@ module Vertebra
 
 		def handle_iq(iq)
 			logger.debug "handle_iq: #{iq.node}"
-      unhandled = true
+			unhandled = true
       
-      if iq.sub_type == LM::MessageSubType::ERROR
+			if iq.sub_type == LM::MessageSubType::ERROR
 				error = iq.node.get_child('error')
 				# Check to see if the error is one we want to retry.
 				# If it is...RETRY
 				#   We need to keep track of the _last_ packet sent for any given
 				#   token, since there's only one in the air at any time, right?
 				# If it is not...log & ABORT
-      end
+			end
       
 			if unhandled && op = iq.node.get_child('op')
         if op['token'].size == 32
