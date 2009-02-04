@@ -77,7 +77,9 @@ module Vertebra
 					@agent.client.send_with_reply(iq) do |answer|
 						logger.debug "Client#make_request got answer #{answer.node}"
 						if answer.sub_type == LM::MessageSubType::RESULT
-							self.token = answer.node.get_child('op')['token']
+							logger.debug "#{answer.node}"
+							logger.debug "#{@agent.parse_token(answer.node).inspect}"
+							self.token = @agent.parse_token(answer.node).first
 							@agent.clients[self.token] = self
 							@state = :ready
 						else

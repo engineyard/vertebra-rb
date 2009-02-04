@@ -115,7 +115,7 @@ module Vertebra
 		def clear_queues
 			# I don't think there's any reason for this, anymore.
 		end
-    
+		
 		def enqueue_synapse(synapse)
 			@synapse_queue << synapse
 		end
@@ -425,80 +425,104 @@ module Vertebra
 			enqueue_synapse(gatherer)
 		end
 
+    def parse_token(iq)
+      token_a, token_b, sequence = iq['token'].to_s.split(':',3)
+      ["#{token_a}:#{token_b}",sequence]
+    end
+    
 		def handle_iq(iq)
 			logger.debug "handle_iq: #{iq.node}"
 			unhandled = true
-      
-			if iq.sub_type == LM::MessageSubType::ERROR
-				error = iq.node.get_child('error')
-				# Check to see if the error is one we want to retry.
-				# If it is...RETRY
-				#   We need to keep track of the _last_ packet sent for any given
-				#   token, since there's only one in the air at any time, right?
-				# If it is not...log & ABORT
-			end
-      
+			
+#			if iq.sub_type == LM::MessageSubType::ERROR
+#        handled = true
+#				error = iq.node.get_child('error')
+#				# Check to see if the error is one we want to retry.
+#				if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
+#  				# If it is...RETRY
+#  				#   We need to keep track of the _last_ packet sent for any given
+#  				#   token, since there's only one in the air at any time, right?
+#  				if op = iq.node.get_child('op')
+#            # First, find the conversation that caused the error.
+#            token,sequence = parse_token(op)
+#  				else
+#            # OK, we got a wait error, but there's no <op>, so there's no
+#            # token to extract, either.  What can be done?  For now, in this
+#            # case, just treat it like an abort.
+#  				end
+#				else
+#          logger.debug "XMPP error: #{error.to_s}; aborting"
+#          if op = iq.node.get_child('op')
+#            # Make sure it's dropped out of the active clients.
+#            @clients.delete(op)
+#          end
+#				end
+#			end
+			
 			if unhandled && op = iq.node.get_child('op')
-        if op['token'].size == 32
-          # The protocol object will take care of enqueing itself.
-          Vertebra::Protocol::Server.new(self,iq)
-        else
-          # TODO: Should we do anything if the op has a token of incorrect
-          # length?  Some sort of error response?
-        end
+        token,sequence = parse_token(op)
+				if token.size == 32
+					# The protocol object will take care of enqueing itself.
+					Vertebra::Protocol::Server.new(self,iq)
+				else
+					# TODO: Should we do anything if the op has a token of incorrect
+					# length? Some sort of error response? Assume crap is broken and
+					# abort?
+				end
 			end
 			
 			if unhandled && ack = iq.node.get_child('ack')
-        client = @clients[ack.get_attribute('token')]
-        if client
-          ack_handler = Vertebra::Synapse.new
-          ack_handler[:client] = client
-          ack_handler[:state] = :ack
-          ack_handler.callback {logger.debug "ack"; client.process_ack_or_nack(iq, :ack, ack)}
-        end
-        enqueue_synapse(ack_handler)
-        unhandled = false 
+				client = @clients[parse_token(ack).first]
+				if client
+					ack_handler = Vertebra::Synapse.new
+					ack_handler[:client] = client
+					ack_handler[:state] = :ack
+					ack_handler.callback {logger.debug "ack"; client.process_ack_or_nack(iq, :ack, ack)}
+				end
+				enqueue_synapse(ack_handler)
+				unhandled = false 
 			end
 
-      if unhandled && nack = iq.node.get_child('nack')
-        client = @clients[ack.get_attribute('token')]
-        if client
-          nack_handler = Vertebra::Synapse.new
-          nack_handler[:client] = client
-          nack_handler[:state] = :nack
-          nack_handler.callback {logger.debug "nack"; client.process_ack_or_nack(iq, :nack, nack)}
-        end
-        enqueue_synapse(nack_handler)
-        unhandled = false
-      end
+			if unhandled && nack = iq.node.get_child('nack')
+				client = @clients[parse_token(nack).first]
+				if client
+					nack_handler = Vertebra::Synapse.new
+					nack_handler[:client] = client
+					nack_handler[:state] = :nack
+					nack_handler.callback {logger.debug "nack"; client.process_ack_or_nack(iq, :nack, nack)}
+				end
+				enqueue_synapse(nack_handler)
+				unhandled = false
+			end
 
 			if unhandled && result = iq.node.get_child('result')
-        client = @clients[result.get_attribute('token')]
-        if client
-          result_handler = Vertebra::Synapse.new
-          result_handler[:client] = client
-          result_handler[:state] = :result
-          result_handler.callback {logger.debug "result"; client.process_result_or_final(iq, :result, result)}
-        end
-        enqueue_synapse(result_handler)
-        unhandled = false 
+				client = @clients[parse_token(result).first]
+				if client
+					result_handler = Vertebra::Synapse.new
+					result_handler[:client] = client
+					result_handler[:state] = :result
+					result_handler.callback {logger.debug "result"; client.process_result_or_final(iq, :result, result)}
+				end
+				enqueue_synapse(result_handler)
+				unhandled = false 
 			end
 
-      if unhandled && final = iq.node.get_child('final')
-        client = @clients[final.get_attribute('token')]
-        if client
-          final_handler = Vertebra::Synapse.new
-          final_handler[:client] = client
-          final_handler[:state] = :final
-          final_handler.callback {logger.debug "final"; client.process_result_or_final(iq, :final, final)}
-        end
-        enqueue_synapse(final_handler)
-        unhandled = false
-      end
-      
-      if unhandled
+			if unhandled && final = iq.node.get_child('final')
+				client = @clients[parse_token(final).first]
+				if client
+					final_handler = Vertebra::Synapse.new
+					final_handler[:client] = client
+					final_handler[:state] = :final
+					final_handler.callback {logger.debug "final"; client.process_result_or_final(iq, :final, final)}
+				end
+				enqueue_synapse(final_handler)
+				unhandled = false
+			end
+			
+			if unhandled
+        # If it can't be matched to anything else, throw back a 406.
 				logger.debug "#{iq.node} getting dropped, unhandled"
-      end
+			end
 		end
 
 		def advertise_op(resources, ttl = @ttl)
