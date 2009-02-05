@@ -434,34 +434,32 @@ module Vertebra
 			logger.debug "handle_iq: #{iq.node}"
 			unhandled = true
 			
-#			if iq.sub_type == LM::MessageSubType::ERROR
-#        handled = true
-#				error = iq.node.get_child('error')
-#				# Check to see if the error is one we want to retry.
-#				if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
-#  				# If it is...RETRY
-#  				#   We need to keep track of the _last_ packet sent for any given
-#  				#   token, since there's only one in the air at any time, right?
-#  				if op = iq.node.get_child('op')
-#            # First, find the conversation that caused the error.
-#            token,sequence = parse_token(op)
-#  				else
-#            # OK, we got a wait error, but there's no <op>, so there's no
-#            # token to extract, either.  What can be done?  For now, in this
-#            # case, just treat it like an abort.
-#  				end
-#				else
-#          logger.debug "XMPP error: #{error.to_s}; aborting"
-#          if op = iq.node.get_child('op')
-#            # Make sure it's dropped out of the active clients.
-#            @clients.delete(op)
-#          end
-#				end
-#			end
+			if iq.sub_type == LM::MessageSubType::ERROR
+        handled = true
+				error = iq.node.get_child('error')
+				# Check to see if the error is one we want to retry.
+				if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
+  				# If it is...RETRY
+  				#   We need to keep track of the _last_ packet sent for any given
+  				#   token, since there's only one in the air at any time, right?
+  				if op = iq.node.get_child('op')
+            # First, find the conversation that caused the error.
+            token,sequence = parse_token(op)
+  				else
+            # OK, we got a wait error, but there's no <op>, so there's no
+            # token to extract, either.  What can be done?  For now, in this
+            # case, just treat it like an abort.
+  				end
+				else
+          logger.debug "XMPP error: #{error.to_s}; aborting"
+          if op = iq.node.get_child('op')
+            # Make sure it's dropped out of the active clients.
+            @clients.delete(op)
+          end
+				end
+			end
 
-      # TODO: There is a bug in every section below; it'll blow up if the client
-      # isn't found in the hash.  Fix it today -- 2009-02-05
-logger.debug "IQ subtype == SET : #{iq.sub_type == LM::MessageSubType::SET}"
+      # Protocol::Server
 			if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
         token,sequence = parse_token(op)
         logger.debug "in op set; token: #{token}/#{token.size}"
@@ -477,8 +475,7 @@ logger.debug "IQ subtype == SET : #{iq.sub_type == LM::MessageSubType::SET}"
 				end
 			end
 			
-#<iq id="660369766876" type="result" xml:lang="en" to="rd00-s00000@localhost/agent" from="herault@localhost/herault"><op token="957dad203b845f7771d0e28367a83194:695d79074e91f572d4d1d727000c2df8:0" xmlns="http://xmlschema.engineyard.com/agent/api" type="/security/advertise"><list name="resources"><res>/cluster/rd00</res><res>/slice/0</res><res>/mock</res><res>/list</res></list><i4 name="ttl">3600</i4></op></iq>
-
+			# Protocol::Client
       if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::RESULT
         logger.debug "Got token: #{parse_token(op).inspect}"
         token, sequence = parse_token(op)
@@ -494,6 +491,7 @@ logger.debug "IQ subtype == SET : #{iq.sub_type == LM::MessageSubType::SET}"
         end
       end
 
+      # Protocol::Client
 			if unhandled && ack = iq.node.get_child('ack')
 				client = @clients[parse_token(ack).first]
 				if client
@@ -506,6 +504,7 @@ logger.debug "IQ subtype == SET : #{iq.sub_type == LM::MessageSubType::SET}"
   			end
 			end
 
+      # Protocol::Client
 			if unhandled && nack = iq.node.get_child('nack')
 				client = @clients[parse_token(nack).first]
 				if client
@@ -518,6 +517,7 @@ logger.debug "IQ subtype == SET : #{iq.sub_type == LM::MessageSubType::SET}"
 				end
 			end
 
+      # Protocol::Client
 			if unhandled && result = iq.node.get_child('result')
 				client = @clients[parse_token(result).first]
 				if client
@@ -530,6 +530,7 @@ logger.debug "IQ subtype == SET : #{iq.sub_type == LM::MessageSubType::SET}"
   			end
 			end
 
+      # Protocol::Client
 			if unhandled && final = iq.node.get_child('final')
 				client = @clients[parse_token(final).first]
 				if client
