@@ -427,7 +427,7 @@ module Vertebra
 
     def parse_token(iq)
       token_a, token_b, sequence = iq['token'].to_s.split(':',3)
-      ["#{token_a}:#{token_b}",sequence]
+      token_b ? ["#{token_a}:#{token_b}",sequence] : [token_a,sequence]
     end
     
 		def handle_iq(iq)
@@ -461,11 +461,14 @@ module Vertebra
 
       # TODO: There is a bug in every section below; it'll blow up if the client
       # isn't found in the hash.  Fix it today -- 2009-02-05
-
+logger.debug "IQ subtype == SET : #{iq.sub_type == LM::MessageSubType::SET}"
 			if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
         token,sequence = parse_token(op)
+        logger.debug "in op set; token: #{token}/#{token.size}"
 				if token.size == 32
+          unhandled = false
 					# The protocol object will take care of enqueing itself.
+					logger.debug "Creating server protocol"
 					Vertebra::Protocol::Server.new(self,iq)
 				else
 					# TODO: Should we do anything if the op has a token of incorrect
@@ -485,6 +488,7 @@ module Vertebra
           clients[token] = client
           clients.delete(left)
           client.is_ready
+          unhandled = false
         else
           # TODO: Ditto; what do we do if the token is malformed?  Abort, I assume.
         end
@@ -497,9 +501,9 @@ module Vertebra
 					ack_handler[:client] = client
 					ack_handler[:state] = :ack
 					ack_handler.callback {logger.debug "ack"; client.process_ack_or_nack(iq, :ack, ack)}
-				end
-				enqueue_synapse(ack_handler)
-				unhandled = false 
+  				enqueue_synapse(ack_handler)
+  				unhandled = false
+  			end
 			end
 
 			if unhandled && nack = iq.node.get_child('nack')
@@ -509,9 +513,9 @@ module Vertebra
 					nack_handler[:client] = client
 					nack_handler[:state] = :nack
 					nack_handler.callback {logger.debug "nack"; client.process_ack_or_nack(iq, :nack, nack)}
+  				enqueue_synapse(nack_handler)
+  				unhandled = false
 				end
-				enqueue_synapse(nack_handler)
-				unhandled = false
 			end
 
 			if unhandled && result = iq.node.get_child('result')
@@ -521,9 +525,9 @@ module Vertebra
 					result_handler[:client] = client
 					result_handler[:state] = :result
 					result_handler.callback {logger.debug "result"; client.process_result_or_final(iq, :result, result)}
-				end
-				enqueue_synapse(result_handler)
-				unhandled = false 
+  				enqueue_synapse(result_handler)
+  				unhandled = false
+  			end
 			end
 
 			if unhandled && final = iq.node.get_child('final')
@@ -533,9 +537,9 @@ module Vertebra
 					final_handler[:client] = client
 					final_handler[:state] = :final
 					final_handler.callback {logger.debug "final"; client.process_result_or_final(iq, :final, final)}
-				end
-				enqueue_synapse(final_handler)
-				unhandled = false
+  				enqueue_synapse(final_handler)
+  				unhandled = false
+  			end
 			end
 			
 			if unhandled
