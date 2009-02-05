@@ -458,8 +458,11 @@ module Vertebra
 #          end
 #				end
 #			end
-			
-			if unhandled && op = iq.node.get_child('op')
+
+      # TODO: There is a bug in every section below; it'll blow up if the client
+      # isn't found in the hash.  Fix it today -- 2009-02-05
+
+			if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
         token,sequence = parse_token(op)
 				if token.size == 32
 					# The protocol object will take care of enqueing itself.
@@ -467,10 +470,26 @@ module Vertebra
 				else
 					# TODO: Should we do anything if the op has a token of incorrect
 					# length? Some sort of error response? Assume crap is broken and
-					# abort?
+					# abort, I assume.
 				end
 			end
 			
+#<iq id="660369766876" type="result" xml:lang="en" to="rd00-s00000@localhost/agent" from="herault@localhost/herault"><op token="957dad203b845f7771d0e28367a83194:695d79074e91f572d4d1d727000c2df8:0" xmlns="http://xmlschema.engineyard.com/agent/api" type="/security/advertise"><list name="resources"><res>/cluster/rd00</res><res>/slice/0</res><res>/mock</res><res>/list</res></list><i4 name="ttl">3600</i4></op></iq>
+
+      if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::RESULT
+        logger.debug "Got token: #{parse_token(op).inspect}"
+        token, sequence = parse_token(op)
+        left, right = token.split(':',2)
+        client = @clients[left]
+        if client
+          clients[token] = client
+          clients.delete(left)
+          client.is_ready
+        else
+          # TODO: Ditto; what do we do if the token is malformed?  Abort, I assume.
+        end
+      end
+
 			if unhandled && ack = iq.node.get_child('ack')
 				client = @clients[parse_token(ack).first]
 				if client

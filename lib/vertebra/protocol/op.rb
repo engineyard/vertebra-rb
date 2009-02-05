@@ -18,6 +18,8 @@
 module Vertebra
   class Op
 
+    attr_accessor :token
+    
     def initialize(op_type, *args)
       params = args.pop if args.last.is_a? Hash
       hsh = {}
@@ -28,13 +30,14 @@ module Vertebra
       # if the last resource is a hash, it's assumed that it's an argument hash
       hsh.merge!(params) if params
       @args = hsh
+      @token = Vertebra.gen_token
       @op_type = Vertebra::Resource.new(op_type.to_s)
     end
 
     def to_iq(to, from, type=LM::MessageSubType::SET)
       iq = LM::Message.new(to, LM::MessageType::IQ,type)
       #iq.node.set_attribute('from',from.to_s)
-      op = Vertebra::Operation.new(@op_type, Vertebra.gen_token)
+      op = Vertebra::Operation.new(@op_type, @token)
 
       iq.node.set_attribute('xml:lang','en')
       iq.node.add_child op

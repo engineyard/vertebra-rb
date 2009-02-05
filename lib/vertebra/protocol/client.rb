@@ -71,26 +71,19 @@ module Vertebra
 				requestor = Vertebra::Synapse.new
 				requestor[:name] = 'requestor'
 				iq = @op.to_iq(@to, @agent.jid)
+				@agent.clients[@op.token] = self
+				logger.debug "Assigning client to token #{@op.token}"
 				requestor.condition {@agent.connection_is_open_and_authenticated?}
 				requestor.callback do
           logger.debug "in requestor callback"
-					@agent.client.send_with_reply(iq) do |answer|
-						logger.debug "Client#make_request got answer #{answer.node}"
-						if answer.sub_type == LM::MessageSubType::RESULT
-							logger.debug "#{answer.node}"
-							logger.debug "#{@agent.parse_token(answer.node).inspect}"
-							self.token = @agent.parse_token(answer.node).first
-							@agent.clients[self.token] = self
-							@state = :ready
-						else
-							@result = "Failure; a :result response was expected, but a #{answer.node.get_attribute('type')} was received."
-							@state = :error
-						end
-						logger.debug "Client#make_request exiting send_with_id"
-					end
+					@agent.client.send(iq)
 				end
 
 				@agent.enqueue_synapse(requestor)				
+			end
+
+			def is_ready
+				@state = :ready
 			end
 
 			def receive(iq)
