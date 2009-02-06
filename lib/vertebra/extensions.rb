@@ -42,7 +42,7 @@ class String
 
   def snakecase(group = true)
     return self unless self =~ %r/[A-Z\s]/
-      reverse.scan(%r/[A-Z]+|[^A-Z]*[A-Z]+?|[^A-Z]+/).reverse.map{|word| word.reverse.downcase}.join('_').gsub(/\s/,'_').gsub(/\//,'::')
+    reverse.scan(%r/[A-Z]+|[^A-Z]*[A-Z]+?|[^A-Z]+/).reverse.map{|word| word.reverse.downcase}.join('_').gsub(/\s/,'_').gsub(/\//,'::')
   end
 
   def snakecase!
@@ -118,13 +118,13 @@ class Class
         end
       RUBY
 
-        unless options[:instance_writer] == false
-          class_eval(<<-RUBY, __FILE__, __LINE__)
+      unless options[:instance_writer] == false
+        class_eval(<<-RUBY, __FILE__, __LINE__)
           def #{sym}=(obj)
             @@#{sym} = obj
           end
         RUBY
-        end
+      end
     end
   end
 
@@ -190,13 +190,13 @@ class Module
         end
       RUBY
 
-        unless options[:instance_writer] == false
-          class_eval(<<-RUBY, __FILE__, __LINE__)
+      unless options[:instance_writer] == false
+        class_eval(<<-RUBY, __FILE__, __LINE__)
           def #{sym}=(obj)
             @@#{sym} = obj
           end
         RUBY
-        end
+      end
     end
   end
 
@@ -228,7 +228,7 @@ class Hash
   def symbolize_keys
     inject({}) do |options, (key, value)|
       options[(key.to_sym rescue key) || key] = value
-    options
+      options
     end
   end
 

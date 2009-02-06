@@ -103,7 +103,7 @@ module Vertebra
       GLib::Timeout.add(1000) { clear_busy_jids; true }
       GLib::Timeout.add(2000) { monitor_connection_status; true }
       GLib::Timeout.add(800) { GC.start; true}
-      GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.			
+      GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.
       GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
     end
 
@@ -434,30 +434,30 @@ module Vertebra
       logger.debug "handle_iq: #{iq.node}"
       unhandled = true
 
-      #			if iq.sub_type == LM::MessageSubType::ERROR
+      #       if iq.sub_type == LM::MessageSubType::ERROR
       #        handled = true
-      #				error = iq.node.get_child('error')
-      #				# Check to see if the error is one we want to retry.
-      #				if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
-      #  				# If it is...RETRY
-      #  				#   We need to keep track of the _last_ packet sent for any given
-      #  				#   token, since there's only one in the air at any time, right?
-      #  				if op = iq.node.get_child('op')
+      #        error = iq.node.get_child('error')
+      #        # Check to see if the error is one we want to retry.
+      #        if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
+      #          # If it is...RETRY
+      #          #   We need to keep track of the _last_ packet sent for any given
+      #          #   token, since there's only one in the air at any time, right?
+      #          if op = iq.node.get_child('op')
       #            # First, find the conversation that caused the error.
       #            token,sequence = parse_token(op)
-      #  				else
+      #          else
       #            # OK, we got a wait error, but there's no <op>, so there's no
       #            # token to extract, either.  What can be done?  For now, in this
       #            # case, just treat it like an abort.
-      #  				end
-      #				else
+      #          end
+      #        else
       #          logger.debug "XMPP error: #{error.to_s}; aborting"
       #          if op = iq.node.get_child('op')
       #            # Make sure it's dropped out of the active clients.
       #            @clients.delete(op)
       #          end
-      #				end
-      #			end
+      #        end
+      #      end
 
       # TODO: There is a bug in every section below; it'll blow up if the client
       # isn't found in the hash.  Fix it today -- 2009-02-05
