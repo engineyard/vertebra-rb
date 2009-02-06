@@ -88,7 +88,8 @@ module Vertebra
       if scope == :all
         gather(scatter(target_jids, op_type, *cooked_args))
       else
-        gather_first(scatter(target_jids, op_type, *cooked_args))
+        # FIXME
+        gather(scatter(target_jids.sort_by { rand }.first, op_type, *cooked_args), true)
       end
     end
 
