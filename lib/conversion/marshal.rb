@@ -133,13 +133,17 @@ module Vertebra
           el.attributes['name'] = name.to_s  unless name.nil?
           el
 
+        when Exception
+          exception_data = {:class => value.class.name, :message => value.message, :backtrace => value.backtrace}
+          encode_pair(name, exception_data)
+
         else 
           # It seems reasonable that if an object is not specially handled, and if it supports a to_s
           # method, it will just be treated as a string instead of throwing an exception.
-          if value.respond_to?(:to_s)
+          if value.respond_to?(:to_str)
             el = Element.new("string")
             el.attributes['name'] = name.to_s unless name.nil?
-            el.text = value.to_s
+            el.text = value.to_str
             el
           else
             # The code knows of no way to encode the object, so throw an exception.
