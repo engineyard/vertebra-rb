@@ -79,7 +79,8 @@ module Vertebra
     # a <nil> result marked as final.
     def handle(op)
       logger.debug "Disptcher handling #{op}"
-      args = Vertebra::Marshal.decode(op)
+      raw_element = REXML::Document.new(op.to_s).root
+      args = Vertebra::Marshal.decode(raw_element)
       actors = candidates(args)
       results_yielded = false
       yielder = Proc.new {|res| yield({:response => res}, false) }
