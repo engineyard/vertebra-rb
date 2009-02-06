@@ -491,8 +491,15 @@ module Vertebra
         end
       end
 
+      #Protocol::Server
+      if unhandled && (ack = iq.node.get_child('ack')) && iq.sub_type == LM::MessageSubType::RESULT
+        client = @clients[parse_token(ack).first]
+        if client
+        end
+      end
+
       # Protocol::Client
-			if unhandled && ack = iq.node.get_child('ack')
+			if unhandled && (ack = iq.node.get_child('ack')) && iq.sub_type == LM::MessageSubType::SET
 				client = @clients[parse_token(ack).first]
 				if client
 					ack_handler = Vertebra::Synapse.new
