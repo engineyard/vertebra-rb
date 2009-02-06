@@ -3,8 +3,8 @@
 require 'rubygems'
 require 'irb'
 require 'drb'
-require 'vertebra/client_api'
 require File.dirname(__FILE__) + '/../lib/vertebra'
+require 'vertebra/client_api'
 
 @_agent = DRbObject.new(nil, "druby://localhost:#{ARGV[0] || 10392}")
 @agent = Vertebra::ClientAPI.new(@_agent)
