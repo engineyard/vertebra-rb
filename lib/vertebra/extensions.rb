@@ -31,7 +31,7 @@ class String
     str[0] = str[0].chr.upcase if upcase_first_letter
     str
   end
-	
+
   def camelcase!
     replace(camelCase)
   end

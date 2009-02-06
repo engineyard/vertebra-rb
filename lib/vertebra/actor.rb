@@ -66,7 +66,7 @@ module Vertebra
   # Like with controllers, be aware that all public actor methods are available
   # to an agent.
   #
-  
+
   class Actor < Thor
 
     class << self
@@ -74,7 +74,7 @@ module Vertebra
 
       def bind_op(resource, method_name)
         key = Vertebra::Resource.new(resource.to_s)
-	provides "/#{key.res.first}"
+        provides "/#{key.res.first}"
         (@op_table ||= {})[key] = method_name
       end
 

@@ -68,9 +68,4 @@ module Vertebra
     ::Marshal.load(::Marshal.dump(obj))
   end
 
-  def self.exception(e)
-    "#{ e.message } - (#{ e.class })\n" <<
-    "#{(e.backtrace or []).join("\n")}"
-  end
-
 end

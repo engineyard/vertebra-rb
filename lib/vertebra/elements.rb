@@ -59,6 +59,10 @@ module Vertebra
     name_xmlns 'result', 'http://xmlschema.engineyard.com/agent/api'
   end
 
+  class Error < BaseElement
+    name_xmlns 'error', 'http://xmlschema.engineyard.com/agent/api'
+  end
+
   class Operation < BaseElement
     name_xmlns 'op', 'http://xmlschema.engineyard.com/agent/api'
     force_xmlns true
