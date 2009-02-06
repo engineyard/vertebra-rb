@@ -24,19 +24,19 @@ module Vertebra
 
       def decode(message)
         hsh = {}
-	if REXML::Element === message
-        	message.each do |el|
-   		     next unless el.attributes['name']
-   		     hsh[el.attributes['name']] = decode_element(el)
-     		end
-	else
-		child = message.child
-		while child
-			hsh[name] = decode_element(child) if name = child.get_attribute('name')
-			child = child.next
-		end
-	end
-	hsh
+        if REXML::Element === message
+          message.each do |el|
+            next unless el.attributes['name']
+            hsh[el.attributes['name']] = decode_element(el)
+          end
+        else
+          child = message.child
+          while child
+            hsh[name] = decode_element(child) if name = child.get_attribute('name')
+            child = child.next
+          end
+        end
+        hsh
       end
 
       def decode_element(el)
