@@ -48,10 +48,10 @@ module Vertebra
           logger.debug "Requiring #{actor.to_s} from paths #{$:.inspect}"
           require actor.to_s
 
-        rescue LoadError => e
-          logger.debug "Could not load the actor class at #{actor.to_s}. Is it installed as a gem?"
-          logger.debug e.message
-        else
+        #rescue LoadError => e
+          #logger.debug "Could not load the actor class at #{actor.to_s}. Is it installed as a gem?"
+          #logger.debug e.message
+        #else
           actor_class = constant(actor.to_s.constantcase)
           actor_instance = actor_class.new
           actor_instance.agent = @agent
