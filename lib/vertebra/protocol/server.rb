@@ -159,61 +159,62 @@ module Vertebra
           notifier = Vertebra::Synapse.new
           notifier.condition { @agent.connection_is_open_and_authenticated? }
 
+          error = false
           begin
             logger.debug "handling #{@op}"
             @agent.dispatcher.handle(@op) do |response, final|
               result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
               result_iq.node.raw_mode = true
-              result_iq.node.set_attribute("id", @iq.node.get_attribute("id"))
-              result_iq.root_node.set_attribute('type', 'result')
-              logger.debug "SENDING #{result_iq.node}"
-              @agent.client.send(result_iq)
+              result_iq.root_node.set_attribute('type', 'set')
 
               result_tag = Vertebra::Result.new(token)
               Vertebra::Marshal.encode(response).children.each do |ch|
                 result_tag.add(ch)
               end
               result_iq.node.value = result_tag.to_s
+              logger.debug "SENDING #{result_iq.node}"
             end
           rescue Exception => e
-            logger.error "#{Vertebra.exception(e)}\noperation FAILED #{@op}"
-            result_tag = Vertebra::Result.new(token)
-            result_tag.attributes['status'] = 'error'
-            Vertebra::Marshal.encode({:backtrace => Vertebra.exception(e)}).children.each do |ch|
-              result_tag.add(ch)
+            logger.error "operation FAILED #{@op}: #{e.class}: #{e.message}"
+            error_tag = Vertebra::Error.new(token)
+            Vertebra::Marshal.encode(:error => e).children.each do |ch|
+              error_tag.add(ch)
             end
-            result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-            result_iq.node.raw_mode = true
-            result_iq.root_node.set_attribute('type', 'set')
-            result_iq.node.value = result_tag.to_s
+            error_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+            error_iq.node.raw_mode = true
+            error_iq.root_node.set_attribute('type', 'set')
+            error_iq.node.value = error_tag.to_s
+            logger.debug "SENDING ERROR: #{error_iq.node}"
 
             notifier.callback do
-              @agent.client.send_with_reply(result_iq) {|answer| @state = :error }
+              @agent.client.send_with_reply(error_iq) {|answer| @state = :error }
             end
             @agent.enqueue_synapse(notifier)
-            break
+            error = true
           end
 
-          logger.debug "setting up notifier for final"
-          notifier.callback do
-            @agent.client.send_with_reply(result_iq) do |answer|
-              if answer.sub_type == LM::MessageSubType::RESULT
-                @state = :flush
-                final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-                final_iq.root_node.set_attribute('type', 'set')
-                result_iq.node.raw_mode = true
-                final_tag = ::Vertebra::Final.new(token)
-                final_iq.node.add_child final_tag
-                logger.debug "  Send Final"
-                @agent.client.send_with_reply(final_iq) do |answer|
-                  if answer.sub_type == LM::MessageSubType::RESULT
-                    @state = :commit
+          unless error
+            logger.debug "setting up notifier for final"
+            notifier.callback do
+              @agent.client.send_with_reply(result_iq) do |answer|
+                if answer.sub_type == LM::MessageSubType::RESULT
+                  @state = :flush
+                  final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+                  final_iq.root_node.set_attribute('type', 'set')
+                  result_iq.node.raw_mode = true
+                  final_tag = ::Vertebra::Final.new(token)
+                  final_iq.node.add_child final_tag
+                  logger.debug "  Send Final"
+                  @agent.client.send_with_reply(final_iq) do |answer|
+                    if answer.sub_type == LM::MessageSubType::RESULT
+                      @state = :commit
+                    end
                   end
                 end
               end
             end
+            @agent.enqueue_synapse(notifier)
           end
-          @agent.enqueue_synapse(notifier)
         end
         @agent.enqueue_synapse(dispatcher)
       end

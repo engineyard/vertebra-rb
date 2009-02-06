@@ -530,6 +530,19 @@ module Vertebra
         end
       end
 
+      if unhandled && error = iq.node.get_child('error')
+        client = @clients[parse_token(error).first]
+        if client
+          logger.error "Got an error: #{error}"
+          error_handler = Vertebra::Synapse.new
+          error_handler[:client] = client
+          error_handler[:state] = :error
+          error_handler.callback {logger.debug "error"; client.process_result_or_final(iq, :error, error)}
+          enqueue_synapse(error_handler)
+          unhandled = false
+        end
+      end
+
       if unhandled && final = iq.node.get_child('final')
         client = @clients[parse_token(final).first]
         if client

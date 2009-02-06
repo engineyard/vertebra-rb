@@ -122,11 +122,9 @@ module Vertebra
           send_final(token)
 
         rescue Exception => e
-          logger.error Vertebra.exception(e)
-          logger.error "operation FAILED #{op}"
-          result_tag = Vertebra::Result.new(token)
-          result_tag.attributes['status'] = 'error'
-          Vertebra::Marshal.encode({:backtrace => Vertebra.exception(e)}).children.each do |ch|
+          logger.error "Herault exception: #{e.class}: #{e.message}"
+          result_tag = Vertebra::Error.new(token)
+          Vertebra::Marshal.encode(:error => e).children.each do |ch|
             result_tag.add(ch)
           end
           result_iq = Jabber::Iq.new(:set, @iq.from)

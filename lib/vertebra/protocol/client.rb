@@ -134,6 +134,12 @@ module Vertebra
           raw_element = REXML::Document.new(packet.to_s).root
           (@results ||= []) << Vertebra::Marshal.decode(raw_element)
           raw_element.children.each {|e| raw_element.delete e}
+        when :error
+          @state = :error
+          raw_element = REXML::Document.new(packet.to_s).root
+          results = @results
+          @results = {:error => Vertebra::Marshal.decode(raw_element["error"]), :results => results}
+          @agent.clients.delete(token)
         when :final
           @state = :commit
           @agent.clients.delete(token)
