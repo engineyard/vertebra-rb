@@ -246,7 +246,7 @@ module Vertebra
       @conn.add_message_handler(LM::MessageType::IQ) do |iq|
         logger.debug "GOT IQ #{iq.node.class}"
         handle_iq(iq)
-      end    
+      end
     end
 
     def start
@@ -428,13 +428,13 @@ module Vertebra
     def parse_token(iq)
       iq['token']
     end
-    
+
     def handle_iq(iq)
       # TODO: Refactor this enormous method.
-      
+
       logger.debug "handle_iq: #{iq.node}"
       unhandled = true
-      
+
       # Handle errors
       if iq.sub_type == LM::MessageSubType::ERROR
         unhandled = false
@@ -445,7 +445,7 @@ module Vertebra
           stanza = iq.node.child
           # First, find the conversation that caused the error.
           token = parse_token(stanza)
- 
+
           cl = @clients[token]
           delay = cl.last_message_sent.node['retry_delay'].to_i || 0
           delay += 1
@@ -491,7 +491,7 @@ module Vertebra
           # abort, I assume.
         end
       end
-      
+
       # Protocol::Client
       if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::RESULT
         logger.debug "Got token: #{parse_token(op).inspect}"
@@ -617,7 +617,7 @@ module Vertebra
       if unhandled
         # Make sure this isn't something that we just don't care about, like an
         # <iq type="result"><session>
-        
+
         case iq.node.child.name
         when 'session'
           # Yeah, don't care about these
@@ -625,7 +625,7 @@ module Vertebra
         else
           # If it can't be matched to anything else, throw back a 406.
         end
-        
+
       end
     end
 
@@ -644,7 +644,7 @@ module Vertebra
       unless provided_resources.empty?
         advertise_op(provided_resources)
         unless @advertise_timer_started
-          GLib::Timeout.add_seconds(@ttl * 0.9) {advertise_op(provided_resources,@ttl)} 
+          GLib::Timeout.add_seconds(@ttl * 0.9) {advertise_op(provided_resources,@ttl)}
           @advertise_timer_started = true
         end
       end

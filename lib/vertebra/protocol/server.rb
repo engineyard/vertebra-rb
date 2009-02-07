@@ -62,13 +62,13 @@ module Vertebra
 
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
         result_iq.node.raw_mode = true
-        result_iq.node.set_attribute("id", iq.root_node.get_attribute("id"))        
+        result_iq.node.set_attribute("id", iq.root_node.get_attribute("id"))
         result_iq.root_node.set_attribute('type', 'result')
         result_iq.node.value = op
         responder = Vertebra::Synapse.new
         responder.condition { @agent.connection_is_open_and_authenticated? }
         responder.callback do
-					@last_message_sent = result_iq
+          @last_message_sent = result_iq
           @agent.client.send(result_iq)
           @state = :verify
           process_authorization
@@ -84,7 +84,7 @@ module Vertebra
 
         rexml_op.children.each do |el|
           next if el.is_a?(REXML::Text)
-          res << el.text if el.name == 'res' 
+          res << el.text if el.name == 'res'
         end
         res << {'from' => @iq.node.get_attribute("from").to_s, 'to' => @iq.node.get_attribute("to").to_s}
 
@@ -120,8 +120,8 @@ module Vertebra
         acknowledger = Vertebra::Synapse.new
         acknowledger.condition { @agent.connection_is_open_and_authenticated? }
         acknowledger.callback do
-					@last_message_sent = iq
-					@agent.client.send(iq)
+          @last_message_sent = iq
+          @agent.client.send(iq)
         end
         @agent.enqueue_synapse(acknowledger)
       end
@@ -150,7 +150,7 @@ module Vertebra
         # TODO: somehow this will have to be decoupled so that a long running op
         # can defer itself so that the event loop is not blocked.
         # This code also needs to be refactored so it's not quite so bugly.
-        
+
         @state = :producing
         logger.debug "Server#process_operation: #{@iq.node.get_child('op').to_s}"
         dispatcher = Vertebra::Synapse.new
@@ -188,7 +188,7 @@ module Vertebra
             logger.debug "SENDING ERROR: #{error_iq.node}"
 
             notifier.callback do
-							@agent.client.send(error_iq)
+              @agent.client.send(error_iq)
             end
             @agent.enqueue_synapse(notifier)
             error = true
@@ -197,7 +197,7 @@ module Vertebra
           unless error
             logger.debug "setting up notifier for final"
             notifier.callback do
-							@agent.client.send(result_iq)
+              @agent.client.send(result_iq)
             end
             @agent.enqueue_synapse(notifier)
           end
@@ -205,24 +205,24 @@ module Vertebra
         @agent.enqueue_synapse(dispatcher)
       end
 
-			def process_result_result(iq)
-				@state = :flush
-				final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-				final_iq.root_node.set_attribute('type', 'set')
-				final_iq.node.raw_mode = true
-				final_tag = ::Vertebra::Final.new(token)
-				final_iq.node.add_child final_tag
-				logger.debug "  Send Final"
-				@agent.client.send(final_iq)
-			end
+      def process_result_result(iq)
+        @state = :flush
+        final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+        final_iq.root_node.set_attribute('type', 'set')
+        final_iq.node.raw_mode = true
+        final_tag = ::Vertebra::Final.new(token)
+        final_iq.node.add_child final_tag
+        logger.debug "  Send Final"
+        @agent.client.send(final_iq)
+      end
 
-			def process_final
-				@state = :commit
-			end
+      def process_final
+        @state = :commit
+      end
 
-			def process_error
-				@state = :error
-			end
+      def process_error
+        @state = :error
+      end
 
       def process_terminate
         logger.error "terminating op!:#{@op}"

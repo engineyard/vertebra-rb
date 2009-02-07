@@ -19,7 +19,7 @@ module Vertebra
   class Op
 
     attr_accessor :token
-    
+
     def initialize(op_type, *args)
       params = args.pop if args.last.is_a? Hash
       hsh = {}

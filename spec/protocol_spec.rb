@@ -54,67 +54,67 @@ describe Vertebra::Op do
     op.instance_variable_get('@args')['to'].should == '/man/in/yellow/hat'
   end
 
-# todo: write a decent test of #to_iq
+  # todo: write a decent test of #to_iq
 
 end
 
-  class MockAgent
-    attr_accessor :jid, :client, :clients, :herault_jid
-    attr_accessor :op_client_backdoor
+class MockAgent
+  attr_accessor :jid, :client, :clients, :herault_jid
+  attr_accessor :op_client_backdoor
 
-    def initialize
-      @jid = 'test@localhost'
-      @herault_jid = 'herault-test@localhost'
-      @clients = Hash.new
-    end
-
-    def direct_op(op_type, to, *args)
-      op = Vertebra::Op.new(op_type, *args)
-      client = Vertebra::Protocol::Client.new(self, op, to)
-      client.make_request
-      client
-    end
-
-    def op(op_type, to, *args)
-      @op_client_backdoor = client = direct_op(op_type, to, *args)
-      until client.done?
-        sleep 0.005
-      end
-      client.results
-    end
-
-
+  def initialize
+    @jid = 'test@localhost'
+    @herault_jid = 'herault-test@localhost'
+    @clients = Hash.new
   end
 
-  class MockXMPPClient
-    def configure_send(&block)
-      @handle_send = block
-    end
+  def direct_op(op_type, to, *args)
+    op = Vertebra::Op.new(op_type, *args)
+    client = Vertebra::Protocol::Client.new(self, op, to)
+    client.make_request
+    client
+  end
 
-    def configure_send_with_id(&block)
-      @handle_send_with_id = block
+  def op(op_type, to, *args)
+    @op_client_backdoor = client = direct_op(op_type, to, *args)
+    until client.done?
+      sleep 0.005
     end
+    client.results
+  end
 
-    def send(xml)
-      if @handle_send
-        if block_given?
-          yield(@handle_send.call(xml))
-        else
-          @handle_send.call(xml)
-        end
+
+end
+
+class MockXMPPClient
+  def configure_send(&block)
+    @handle_send = block
+  end
+
+  def configure_send_with_id(&block)
+    @handle_send_with_id = block
+  end
+
+  def send(xml)
+    if @handle_send
+      if block_given?
+        yield(@handle_send.call(xml))
+      else
+        @handle_send.call(xml)
       end
-    end
-
-    def send_with_id(xml)
-      if @handle_send_with_id
-        yield(@handle_send_with_id.call(xml))
-      end
-    end
-
-    def send_with_reply(xml,&block)
-      send_with_id(xml) {|x| block.call(x)}
     end
   end
+
+  def send_with_id(xml)
+    if @handle_send_with_id
+      yield(@handle_send_with_id.call(xml))
+    end
+  end
+
+  def send_with_reply(xml,&block)
+    send_with_id(xml) {|x| block.call(x)}
+  end
+end
 
 
 describe Vertebra::Protocol::Client do
@@ -122,7 +122,7 @@ describe Vertebra::Protocol::Client do
   it 'sanity check the mocks' do
     #### Setup
     agent = MockAgent.new
-#    agent.clients = Hash.new
+    #    agent.clients = Hash.new
     xmppclient = MockXMPPClient.new
     agent.client = xmppclient
     agent.jid = 'test@localhost'
@@ -247,32 +247,32 @@ describe Vertebra::Protocol::Client do
     client.instance_variable_get('@result').should be_an_instance_of(String)
   end
 
-#  it 'process_ack_or_nack should process an ack' do
-#    #### Setup
-#    op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
-#    agent = MockAgent.new
-#    #agent.clients = Hash.new
-#    xmppclient = MockXMPPClient.new
-#    xmppclient.configure_send_with_id do
-#      op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
-#      r = op.to_iq('/test/test','test@localhost',LM::MessageSubType::RESULT)
-#      r
-#    end
-#    xmppclient.configure_send do |iq|
-#      iq
-#    end
-#    agent.client = xmppclient
-#    agent.jid = 'test@localhost'
-#    to = 'test@localhost'
-#    client = Vertebra::Protocol::Client.new(agent, op,to)
-#    iq = op.to_iq('/test/test','test@localhost')
-#    iq.node.add_child Vertebra::Ack.new(client.make_request)
-#    result_iq = client.process_ack_or_nack(iq)
-#    #### End Setup
-#
-#    client.state.should == :consume
-#    result_iq.should be_an_instance_of(LM::Message)
-#  end
+  #  it 'process_ack_or_nack should process an ack' do
+  #    #### Setup
+  #    op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
+  #    agent = MockAgent.new
+  #    #agent.clients = Hash.new
+  #    xmppclient = MockXMPPClient.new
+  #    xmppclient.configure_send_with_id do
+  #      op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
+  #      r = op.to_iq('/test/test','test@localhost',LM::MessageSubType::RESULT)
+  #      r
+  #    end
+  #    xmppclient.configure_send do |iq|
+  #      iq
+  #    end
+  #    agent.client = xmppclient
+  #    agent.jid = 'test@localhost'
+  #    to = 'test@localhost'
+  #    client = Vertebra::Protocol::Client.new(agent, op,to)
+  #    iq = op.to_iq('/test/test','test@localhost')
+  #    iq.node.add_child Vertebra::Ack.new(client.make_request)
+  #    result_iq = client.process_ack_or_nack(iq)
+  #    #### End Setup
+  #
+  #    client.state.should == :consume
+  #    result_iq.should be_an_instance_of(LM::Message)
+  #  end
 
   it 'process_ack_or_nack should process a nack' do
     #### Setup
@@ -302,33 +302,33 @@ describe Vertebra::Protocol::Client do
     result_iq.should be_an_instance_of(LM::Message)
   end
 
-#  it 'process_result_or_final should process a result' do
-#    #### Setup
-#    op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
-#    agent = MockAgent.new
-#    #agent.clients = Hash.new
-#    xmppclient = MockXMPPClient.new
-#    xmppclient.configure_send_with_id do
-#      op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
-#      r = op.to_iq('/test/test','test@localhost',LM::MessageSubType::RESULT)
-#      r
-#    end
-#    xmppclient.configure_send do |iq|
-#      iq
-#    end
-#    agent.client = xmppclient
-#    agent.jid = 'test@localhost'
-#    to = 'test@localhost'
-#    client = Vertebra::Protocol::Client.new(agent, op,to)
-#    iq = op.to_iq('/test/test','test@localhost')
-#    iq.node.add_child Vertebra::Result.new(client.make_request)
-#    result_iq = client.process_result_or_final(iq)
-#    #### End Setup
-#
-#    client.results.should be_an_instance_of(Hash)
-#    client.instance_variable_get('@results').size.should == 1
-#    result_iq.should be_an_instance_of(LM::Message)
-#  end
+  #  it 'process_result_or_final should process a result' do
+  #    #### Setup
+  #    op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
+  #    agent = MockAgent.new
+  #    #agent.clients = Hash.new
+  #    xmppclient = MockXMPPClient.new
+  #    xmppclient.configure_send_with_id do
+  #      op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
+  #      r = op.to_iq('/test/test','test@localhost',LM::MessageSubType::RESULT)
+  #      r
+  #    end
+  #    xmppclient.configure_send do |iq|
+  #      iq
+  #    end
+  #    agent.client = xmppclient
+  #    agent.jid = 'test@localhost'
+  #    to = 'test@localhost'
+  #    client = Vertebra::Protocol::Client.new(agent, op,to)
+  #    iq = op.to_iq('/test/test','test@localhost')
+  #    iq.node.add_child Vertebra::Result.new(client.make_request)
+  #    result_iq = client.process_result_or_final(iq)
+  #    #### End Setup
+  #
+  #    client.results.should be_an_instance_of(Hash)
+  #    client.instance_variable_get('@results').size.should == 1
+  #    result_iq.should be_an_instance_of(LM::Message)
+  #  end
 
   it 'process_result_or_final should process a final' do
     #### Setup
@@ -422,26 +422,26 @@ describe Vertebra::Protocol::Server do
   #  server = Vertebra::Protocol::Server.new(agent)
   #  op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
   #  server_iq = op.to_iq('/test/test','test@localhost')
-#
-#    receive_client = Vertebra::Protocol::Client.new(agent,op,'test@localhost')
-#    receive_iq = op.to_iq('/test/test','test@localhost',LM::MessageSubType::RESULT)
-#
-#    vrn = Vertebra::Result.new(receive_client.make_request)
-#
-#    receive_iq.node.add_child vrn
-#
-#    #### End Setup
-#
-#    Thread.new do
-#      # Fake the essential parts of the protocol exchange that the server is expecting.
-#      sleep 0.5
-#      agent.op_client_backdoor.instance_variable_set('@state',:consume)
-#      agent.op_client_backdoor.receive(receive_iq)
-#      sleep 0.5
-#      agent.op_client_backdoor.instance_variable_set('@state',:commit)
-#    end
-#
-#    # Without proper authentcaton, will terminate.
-#    server.receive_request(server_iq).should == :terminated
-#  end
+  #
+  #    receive_client = Vertebra::Protocol::Client.new(agent,op,'test@localhost')
+  #    receive_iq = op.to_iq('/test/test','test@localhost',LM::MessageSubType::RESULT)
+  #
+  #    vrn = Vertebra::Result.new(receive_client.make_request)
+  #
+  #    receive_iq.node.add_child vrn
+  #
+  #    #### End Setup
+  #
+  #    Thread.new do
+  #      # Fake the essential parts of the protocol exchange that the server is expecting.
+  #      sleep 0.5
+  #      agent.op_client_backdoor.instance_variable_set('@state',:consume)
+  #      agent.op_client_backdoor.receive(receive_iq)
+  #      sleep 0.5
+  #      agent.op_client_backdoor.instance_variable_set('@state',:commit)
+  #    end
+  #
+  #    # Without proper authentcaton, will terminate.
+  #    server.receive_request(server_iq).should == :terminated
+  #  end
 end
