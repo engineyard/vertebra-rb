@@ -445,14 +445,16 @@ module Vertebra
           if op = iq.node.get_child('op')
             # First, find the conversation that caused the error.
             token = parse_token(op)
-            
+ 
             cl = @clients[token]
+            delay = cl.last_message_sent.node['retry_delay'].to_i || 0
+            delay += 1
+            cl.last_message_sent.node['retry_delay'] = delay.to_s
             logger.debug "Resending #{cl.last_message_sent.node}"
             resender = Vertebra::Synapse.new
             resender.condition { connection_is_open_and_authenticated? }
             resender.callback do
-              sleep 1 # Unsure about this delay; maybe it should start short and
-              # increase with repeated resends?
+              sleep Math.log(delay + 0.1)
               client.send(cl.last_message_sent)
             end
             enqueue_synapse(resender)
