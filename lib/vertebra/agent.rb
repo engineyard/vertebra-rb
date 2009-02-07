@@ -440,29 +440,22 @@ module Vertebra
         # Check to see if the error is one we want to retry.
         if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
           # If it is...RETRY
-          #   We need to keep track of the _last_ packet sent for any given
-          #   token, since there's only one in the air at any time, right?
-          if op = iq.node.get_child('op')
-            # First, find the conversation that caused the error.
-            token = parse_token(op)
+          packet = iq.node.child
+          # First, find the conversation that caused the error.
+          token = parse_token(packet)
  
-            cl = @clients[token]
-            delay = cl.last_message_sent.node['retry_delay'].to_i || 0
-            delay += 1
-            cl.last_message_sent.node['retry_delay'] = delay.to_s
-            logger.debug "Resending #{cl.last_message_sent.node}"
-            resender = Vertebra::Synapse.new
-            resender.condition { connection_is_open_and_authenticated? }
-            resender.callback do
-              sleep Math.log(delay + 0.1)
-              client.send(cl.last_message_sent)
-            end
-            enqueue_synapse(resender)
-          else
-            # OK, we got a wait error, but there's no <op>, so there's no
-            # token to extract, either.  What can be done?  For now, in this
-            # case, just treat it like an abort.
+          cl = @clients[token]
+          delay = cl.last_message_sent.node['retry_delay'].to_i || 0
+          delay += 1
+          cl.last_message_sent.node['retry_delay'] = delay.to_s
+          logger.debug "Resending #{cl.last_message_sent.node}"
+          resender = Vertebra::Synapse.new
+          resender.condition { connection_is_open_and_authenticated? }
+          resender.callback do
+            sleep Math.log(delay + 0.1)
+            client.send(cl.last_message_sent)
           end
+          enqueue_synapse(resender)
         else
           logger.debug "XMPP error: #{error.to_s}; aborting"
           error_handler = Vertebra::Synapse.new
