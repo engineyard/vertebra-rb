@@ -105,7 +105,6 @@ module Vertebra
       GLib::Timeout.add(800) { GC.start; true}
       GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.
       GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
-      GLib::Timeout.add(10000) { logger.debug "Clients: #{@clients.size}\nServers: #{@servers.size}"}
     end
 
     # Is this layer necessary?
@@ -463,10 +462,6 @@ module Vertebra
           error_handler[:state] = :error
           error_handler.callback {logger.debug "error"; client.process_result_or_final(iq, :error, error)}
           enqueue_synapse(error_handler)
-#          if op = iq.node.get_child('op')
-#            # Make sure it's dropped out of the active clients.
-#            @clients.delete(op)
-#          end
         end
       end
 

@@ -121,13 +121,6 @@ module Vertebra
         acknowledger.condition { @agent.connection_is_open_and_authenticated? }
         acknowledger.callback do
 					@last_message_sent = iq
-#          @agent.client.send_with_reply(iq) do |answer|
-#            if answer.sub_type == LM::MessageSubType::RESULT
-#              process_operation
-#            else
-#              process_terminate
-#            end
-#          end
 					@agent.client.send(iq)
         end
         @agent.enqueue_synapse(acknowledger)
@@ -143,7 +136,7 @@ module Vertebra
         terminator = Vertebra::Synapse.new
         terminator.condition { @agent.connection_is_open_and_authenticated? }
         terminator.callback do
-          # This is probably wrong; I am betting this code should probably
+          # FIXME: This is probably wrong; I am betting this code should probably
           # expect the response to the nack, so that it can retry.
           @last_message_sent = iq
           @agent.client.send(iq)
@@ -195,7 +188,6 @@ module Vertebra
             logger.debug "SENDING ERROR: #{error_iq.node}"
 
             notifier.callback do
-#              @agent.client.send_with_reply(error_iq) {|answer| @state = :error }
 							@agent.client.send(error_iq)
             end
             @agent.enqueue_synapse(notifier)
@@ -206,22 +198,6 @@ module Vertebra
             logger.debug "setting up notifier for final"
             notifier.callback do
 							@agent.client.send(result_iq)
-#              @agent.client.send_with_reply(result_iq) do |answer|
-#                if answer.sub_type == LM::MessageSubType::RESULT
-#                  @state = :flush
-#                  final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-#                  final_iq.root_node.set_attribute('type', 'set')
-#                  result_iq.node.raw_mode = true
-#                  final_tag = ::Vertebra::Final.new(token)
-#                  final_iq.node.add_child final_tag
-#                  logger.debug "  Send Final"
-#                  @agent.client.send_with_reply(final_iq) do |answer|
-#                    if answer.sub_type == LM::MessageSubType::RESULT
-#                      @state = :commit
-#                    end
-#                  end
-#                end
-#              end
             end
             @agent.enqueue_synapse(notifier)
           end
