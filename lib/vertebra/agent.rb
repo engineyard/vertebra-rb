@@ -105,6 +105,7 @@ module Vertebra
       GLib::Timeout.add(800) { GC.start; true}
       GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.
       GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
+      GLib::Timeout.add(10000) { logger.debug "Clients: #{@clients.size}\nServers: #{@servers.size}"}
     end
 
     # Is this layer necessary?
@@ -426,59 +427,74 @@ module Vertebra
     end
 
     def parse_token(iq)
-      token_a, token_b, sequence = iq['token'].to_s.split(':',3)
-      token_b ? ["#{token_a}:#{token_b}",sequence] : [token_a,sequence]
+      iq['token']
     end
     
-		def handle_iq(iq)
-			logger.debug "handle_iq: #{iq.node}"
-			unhandled = true
-			
-			if iq.sub_type == LM::MessageSubType::ERROR
-        handled = true
-				error = iq.node.get_child('error')
-				# Check to see if the error is one we want to retry.
-				if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
-  				# If it is...RETRY
-  				#   We need to keep track of the _last_ packet sent for any given
-  				#   token, since there's only one in the air at any time, right?
-  				if op = iq.node.get_child('op')
+    def handle_iq(iq)
+      logger.debug "handle_iq: #{iq.node}"
+      unhandled = true
+      
+      if iq.sub_type == LM::MessageSubType::ERROR
+        unhandled = false
+        error = iq.node.get_child('error')
+        # Check to see if the error is one we want to retry.
+        if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
+          # If it is...RETRY
+          #   We need to keep track of the _last_ packet sent for any given
+          #   token, since there's only one in the air at any time, right?
+          if op = iq.node.get_child('op')
             # First, find the conversation that caused the error.
-            token,sequence = parse_token(op)
-  				else
+            token = parse_token(op)
+            
+            cl = @clients[token]
+            logger.debug "Resending #{cl.last_message_sent.node}"
+            resender = Vertebra::Synapse.new
+            resender.condition { connection_is_open_and_authenticated? }
+            resender.callback do
+              sleep 1 # Unsure about this delay; maybe it should start short and
+              # increase with repeated resends?
+              client.send(cl.last_message_sent)
+            end
+            enqueue_synapse(resender)
+          else
             # OK, we got a wait error, but there's no <op>, so there's no
             # token to extract, either.  What can be done?  For now, in this
             # case, just treat it like an abort.
-  				end
-				else
-          logger.debug "XMPP error: #{error.to_s}; aborting"
-          if op = iq.node.get_child('op')
-            # Make sure it's dropped out of the active clients.
-            @clients.delete(op)
           end
-				end
-			end
+        else
+          logger.debug "XMPP error: #{error.to_s}; aborting"
+          error_handler = Vertebra::Synapse.new
+          error_handler[:client] = client
+          error_handler[:state] = :error
+          error_handler.callback {logger.debug "error"; client.process_result_or_final(iq, :error, error)}
+          enqueue_synapse(error_handler)
+#          if op = iq.node.get_child('op')
+#            # Make sure it's dropped out of the active clients.
+#            @clients.delete(op)
+#          end
+        end
+      end
 
       # Protocol::Server
-			if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
-        token,sequence = parse_token(op)
+      if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
+        token = parse_token(op)
         logger.debug "in op set; token: #{token}/#{token.size}"
         if token.size == 32
           unhandled = false
-					# The protocol object will take care of enqueing itself.
-					logger.debug "Creating server protocol"
-					Vertebra::Protocol::Server.new(self,iq)
-				else
-					# TODO: Should we do anything if the op has a token of incorrect
-					# length? Some sort of error response? Assume crap is broken and
-					# abort, I assume.
-				end
-			end
-			
-			# Protocol::Client
+          # The protocol object will take care of enqueing itself.
+          logger.debug "Creating server protocol"
+          Vertebra::Protocol::Server.new(self,iq)
+        else
+          # TODO: Should we do anything if the op has a token of incorrect
+          # length? Some sort of error response? Assume crap is broken and
+          # abort, I assume.
+        end
+      end
+      
+      # Protocol::Client
       if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::RESULT
         logger.debug "Got token: #{parse_token(op).inspect}"
-        token, sequence = parse_token(op)
+        token = parse_token(op)
         left, right = token.split(':',2)
         client = @clients[left]
         if client
@@ -493,64 +509,111 @@ module Vertebra
 
       #Protocol::Server
       if unhandled && (ack = iq.node.get_child('ack')) && iq.sub_type == LM::MessageSubType::RESULT
-        client = @clients[parse_token(ack).first]
-        if client
+        server = @servers[parse_token(ack)]
+        if server
+          ack_handler = Vertebra::Synapse.new
+          ack_handler[:client] = server
+          ack_handler[:state] = :ack
+          ack_handler.callback {logger.debug "ack"; server.process_operation}
+          enqueue_synapse(ack_handler)
+          unhandled = false
         end
       end
 
       # Protocol::Client
-			if unhandled && (ack = iq.node.get_child('ack')) && iq.sub_type == LM::MessageSubType::SET
-				client = @clients[parse_token(ack).first]
-				if client
-					ack_handler = Vertebra::Synapse.new
-					ack_handler[:client] = client
-					ack_handler[:state] = :ack
-					ack_handler.callback {logger.debug "ack"; client.process_ack_or_nack(iq, :ack, ack)}
-  				enqueue_synapse(ack_handler)
-  				unhandled = false
-  			end
-			end
+      if unhandled && (ack = iq.node.get_child('ack')) && iq.sub_type == LM::MessageSubType::SET
+        client = @clients[parse_token(ack)]
+        if client
+          ack_handler = Vertebra::Synapse.new
+          ack_handler[:client] = client
+          ack_handler[:state] = :ack
+          ack_handler.callback {logger.debug "ack"; client.process_ack_or_nack(iq, :ack, ack)}
+          enqueue_synapse(ack_handler)
+          unhandled = false
+        end
+      end
 
       # Protocol::Client
-			if unhandled && nack = iq.node.get_child('nack')
-				client = @clients[parse_token(nack).first]
-				if client
-					nack_handler = Vertebra::Synapse.new
-					nack_handler[:client] = client
-					nack_handler[:state] = :nack
-					nack_handler.callback {logger.debug "nack"; client.process_ack_or_nack(iq, :nack, nack)}
-  				enqueue_synapse(nack_handler)
-  				unhandled = false
-				end
-			end
+      if unhandled && nack = iq.node.get_child('nack')
+        client = @clients[parse_token(nack)]
+        if client
+          nack_handler = Vertebra::Synapse.new
+          nack_handler[:client] = client
+          nack_handler[:state] = :nack
+          nack_handler.callback {logger.debug "nack"; client.process_ack_or_nack(iq, :nack, nack)}
+          enqueue_synapse(nack_handler)
+          unhandled = false
+        end
+      end
+
+      # Protocol::Server
+      if unhandled && (result = iq.node.get_child('result')) && iq.sub_type == LM::MessageSubType::RESULT
+        server = @servers[parse_token(result)]
+        if server
+          result_handler = Vertebra::Synapse.new
+          result_handler[:client] = server
+          result_handler[:state] = :result
+          result_handler.callback {logger.debug "result"; server.process_result_result(result)}
+          enqueue_synapse(result_handler)
+          unhandled = false
+        end
+      end
 
       # Protocol::Client
-			if unhandled && result = iq.node.get_child('result')
-				client = @clients[parse_token(result).first]
-				if client
-					result_handler = Vertebra::Synapse.new
-					result_handler[:client] = client
-					result_handler[:state] = :result
-					result_handler.callback {logger.debug "result"; client.process_result_or_final(iq, :result, result)}
-  				enqueue_synapse(result_handler)
-  				unhandled = false
-  			end
-			end
+      if unhandled && (result = iq.node.get_child('result')) && iq.sub_type == LM::MessageSubType::SET
+        client = @clients[parse_token(result)]
+        if client
+          result_handler = Vertebra::Synapse.new
+          result_handler[:client] = client
+          result_handler[:state] = :result
+          result_handler.callback {logger.debug "result"; client.process_result_or_final(iq, :result, result)}
+          enqueue_synapse(result_handler)
+          unhandled = false
+        end
+      end
+
+      # Protocol::Server
+      if unhandled && (final = iq.node.get_child('final')) && iq.sub_type == LM::MessageSubType::RESULT
+        token = parse_token(final)
+        server = @servers[token]
+        if server
+          final_handler = Vertebra::Synapse.new
+          final_handler[:client] = server
+          final_handler[:state] = :final
+          final_handler.callback {logger.debug "final"; @servers.delete(token); server.process_final}
+          enqueue_synapse(final_handler)
+          unhandled = false
+        end
+      end
 
       # Protocol::Client
-			if unhandled && final = iq.node.get_child('final')
-				client = @clients[parse_token(final).first]
-				if client
-					final_handler = Vertebra::Synapse.new
-					final_handler[:client] = client
-					final_handler[:state] = :final
-					final_handler.callback {logger.debug "final"; client.process_result_or_final(iq, :final, final)}
-  				enqueue_synapse(final_handler)
-  				unhandled = false
-  			end
-			end
-			
-			if unhandled
+      if unhandled && (final = iq.node.get_child('final')) && iq.sub_type == LM::MessageSubType::SET
+        client = @clients[parse_token(final)]
+        if client
+          final_handler = Vertebra::Synapse.new
+          final_handler[:client] = client
+          final_handler[:state] = :final
+          final_handler.callback {logger.debug "final"; client.process_result_or_final(iq, :final, final)}
+          enqueue_synapse(final_handler)
+          unhandled = false
+        end
+      end
+
+      # Protocol::Server
+      if unhandled && (error = iq.node.get_child('error')) && iq.sub_type == LM::MessageSubType::RESULT
+        token = parse_token(error)
+        server = @servers[token]
+        if client
+          error_handler = Vertebra::Synapse.new
+          error_handler[:client] = server
+          error_handler[:state] = :error
+          error_handler.callback {logger.debug "error"; @servers.delete(token); server.process_error}
+          enqueue_synapse(ack_handler)
+          unhandled = false
+        end
+      end
+
+      if unhandled
         # If it can't be matched to anything else, throw back a 406.
         logger.debug "#{iq.node} getting dropped, unhandled"
       end

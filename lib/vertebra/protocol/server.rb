@@ -39,7 +39,7 @@ module Vertebra
 
     class Server
 
-      attr_accessor :token, :agent, :state
+      attr_accessor :token, :agent, :state, :last_message_sent
 
       def initialize(agent,iq)
         @agent = agent
@@ -58,6 +58,7 @@ module Vertebra
         @op = op = iq.node.find_child('op')
         self.token = op.get_attribute('token').split(':').last << ":#{Vertebra.gen_token}"
         op.set_attribute("token", token)
+        @agent.servers[token] = self
 
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
         result_iq.node.raw_mode = true
@@ -67,6 +68,7 @@ module Vertebra
         responder = Vertebra::Synapse.new
         responder.condition { @agent.connection_is_open_and_authenticated? }
         responder.callback do
+					@last_message_sent = result_iq
           @agent.client.send(result_iq)
           @state = :verify
           process_authorization
@@ -118,13 +120,15 @@ module Vertebra
         acknowledger = Vertebra::Synapse.new
         acknowledger.condition { @agent.connection_is_open_and_authenticated? }
         acknowledger.callback do
-          @agent.client.send_with_reply(iq) do |answer|
-            if answer.sub_type == LM::MessageSubType::RESULT
-              process_operation
-            else
-              process_terminate
-            end
-          end
+					@last_message_sent = iq
+#          @agent.client.send_with_reply(iq) do |answer|
+#            if answer.sub_type == LM::MessageSubType::RESULT
+#              process_operation
+#            else
+#              process_terminate
+#            end
+#          end
+					@agent.client.send(iq)
         end
         @agent.enqueue_synapse(acknowledger)
       end
@@ -141,7 +145,9 @@ module Vertebra
         terminator.callback do
           # This is probably wrong; I am betting this code should probably
           # expect the response to the nack, so that it can retry.
+          @last_message_sent = iq
           @agent.client.send(iq)
+          @agent.servers.delete iq.node['token']
           process_terminate
         end
         @agent.enqueue_synapse(terminator)
@@ -150,6 +156,8 @@ module Vertebra
       def process_operation
         # TODO: somehow this will have to be decoupled so that a long running op
         # can defer itself so that the event loop is not blocked.
+        # This code also needs to be refactored so it's not quite so bugly.
+        
         @state = :producing
         logger.debug "Server#process_operation: #{@iq.node.get_child('op').to_s}"
         dispatcher = Vertebra::Synapse.new
@@ -187,7 +195,8 @@ module Vertebra
             logger.debug "SENDING ERROR: #{error_iq.node}"
 
             notifier.callback do
-              @agent.client.send_with_reply(error_iq) {|answer| @state = :error }
+#              @agent.client.send_with_reply(error_iq) {|answer| @state = :error }
+							@agent.client.send(error_iq)
             end
             @agent.enqueue_synapse(notifier)
             error = true
@@ -196,28 +205,48 @@ module Vertebra
           unless error
             logger.debug "setting up notifier for final"
             notifier.callback do
-              @agent.client.send_with_reply(result_iq) do |answer|
-                if answer.sub_type == LM::MessageSubType::RESULT
-                  @state = :flush
-                  final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-                  final_iq.root_node.set_attribute('type', 'set')
-                  result_iq.node.raw_mode = true
-                  final_tag = ::Vertebra::Final.new(token)
-                  final_iq.node.add_child final_tag
-                  logger.debug "  Send Final"
-                  @agent.client.send_with_reply(final_iq) do |answer|
-                    if answer.sub_type == LM::MessageSubType::RESULT
-                      @state = :commit
-                    end
-                  end
-                end
-              end
+							@agent.client.send(result_iq)
+#              @agent.client.send_with_reply(result_iq) do |answer|
+#                if answer.sub_type == LM::MessageSubType::RESULT
+#                  @state = :flush
+#                  final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+#                  final_iq.root_node.set_attribute('type', 'set')
+#                  result_iq.node.raw_mode = true
+#                  final_tag = ::Vertebra::Final.new(token)
+#                  final_iq.node.add_child final_tag
+#                  logger.debug "  Send Final"
+#                  @agent.client.send_with_reply(final_iq) do |answer|
+#                    if answer.sub_type == LM::MessageSubType::RESULT
+#                      @state = :commit
+#                    end
+#                  end
+#                end
+#              end
             end
             @agent.enqueue_synapse(notifier)
           end
         end
         @agent.enqueue_synapse(dispatcher)
       end
+
+			def process_result_result(iq)
+				@state = :flush
+				final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+				final_iq.root_node.set_attribute('type', 'set')
+				final_iq.node.raw_mode = true
+				final_tag = ::Vertebra::Final.new(token)
+				final_iq.node.add_child final_tag
+				logger.debug "  Send Final"
+				@agent.client.send(final_iq)
+			end
+
+			def process_final
+				@state = :commit
+			end
+
+			def process_error
+				@state = :error
+			end
 
       def process_terminate
         logger.error "terminating op!:#{@op}"

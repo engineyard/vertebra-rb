@@ -46,7 +46,7 @@ module Vertebra
     class Client
       DONE_STATES = [:commit, :authfail, :error]
 
-      attr_accessor :token, :agent
+      attr_accessor :token, :agent, :last_message_sent
       attr_reader :state, :to
 
       def initialize(agent, op, to)
@@ -76,6 +76,7 @@ module Vertebra
         requestor.condition {@agent.connection_is_open_and_authenticated?}
         requestor.callback do
           logger.debug "in requestor callback"
+          @last_message_sent = iq
           @agent.client.send(iq)
         end
 
@@ -121,6 +122,7 @@ module Vertebra
         response.condition { @agent.connection_is_open_and_authenticated? }
         response.callback do
           logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
+          @last_message_sent = result_iq
           @agent.client.send(result_iq)
         end
 
@@ -142,7 +144,8 @@ module Vertebra
           @agent.clients.delete(token)
         when :final
           @state = :commit
-          @agent.clients.delete(token)
+          logger.debug "DELETING TOKEN #{@agent.parse_token(iq.node.find_child('final'))}"
+          @agent.clients.delete(@agent.parse_token(iq.node.find_child('final')))
         end
 
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
@@ -155,6 +158,7 @@ module Vertebra
         response.condition { @agent.connection_is_open_and_authenticated? }
         response.callback do
           logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
+          @last_message_sent = result_iq
           @agent.client.send(result_iq)
           @agent.remove_busy_jid(@to)
         end
