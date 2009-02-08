@@ -18,6 +18,7 @@
 require File.dirname(__FILE__) + '/spec_helper'
 require 'vertebra'
 require 'vertebra/agent'
+require 'vertebra/synapse_queue'
 
 # Specs to test the protocol portion of Vertebra.
 
@@ -58,8 +59,68 @@ describe Vertebra::Op do
 
 end
 
+class Mock
+  def initialize
+    @handlers = {}
+  end
+
+  def add_handler(symbol, &block)
+    @handlers[symbol] = block
+  end
+
+  def remove_handler(symbol)
+    @handlers.delete(symbol)
+  end
+
+  def method_missing(symbol, *args)
+    method = @handlers[symbol]
+    unless method.nil?
+      method.call(*args)
+    else
+      super
+    end
+  end
+end
+
+class MockAgent < Mock
+  def enqueue_synapse(synapse)
+    synapses << synapse
+  end
+
+  def synapses
+    @synapses ||= Vertebra::SynapseQueue.new
+  end
+end
+
 describe Vertebra::Protocol::Client do
 
+  before :all do
+    @agent = MockAgent.new
+    @op = Vertebra::Op.new("/foo")
+    @to = nil
+    @client = Vertebra::Protocol::Client.new(@agent, @op, @to)
+  end
+
+  it 'Should enqueue a synapse during initialization' do
+    @client.state.should == :new
+    @agent.synapses.size.should == 1
+  end
+
+  it 'Should check connection status and defer if jid is busy' do
+    synapse = @agent.synapses.first
+
+    # Both return false
+    @agent.add_handler(:connection_is_open_and_authenticated?) {:deferred}
+    @agent.add_handler(:defer_on_busy_jid?) {|jid| :deferred}
+    @agent.synapses.fire
+    @agent.synapses.size.should == 1
+    @agent.synapses.first.should == synapse
+
+    # Connection returns true
+    @agent.add_handler(:connection_is_open_and_authenticated?) {true}
+    @agent.synapses.fire
+    @agent.synapses.first.should == synapse
+  end
 end
 
 describe Vertebra::Protocol::Server do
