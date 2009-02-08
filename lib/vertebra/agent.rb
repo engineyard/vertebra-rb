@@ -17,7 +17,6 @@
 
 require 'vertebra/dispatcher'
 require 'vertebra/actor'
-#require 'vertebra/helpers/pubsub'
 require 'vertebra/synapse'
 
 begin

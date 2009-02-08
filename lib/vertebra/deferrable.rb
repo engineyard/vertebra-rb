@@ -1,5 +1,7 @@
-# This deferrable implementation is based upon the Deferrable found in
-# EventMachine.  It is modified to work with the GLib event loop, and
+# This file is modelled after the deferrable implementation in EventMachine.
+# EventMachine is licensed under the Ruby License or GNU GPL, at your option.
+#
+# It is modified to work with the GLib event loop, and
 # the functionality is slightly altered from the original. Refer to the
 # EventMachine distribution for the original implementation.
 
