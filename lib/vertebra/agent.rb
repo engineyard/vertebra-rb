@@ -108,6 +108,10 @@ module Vertebra
       GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
     end
 
+    def add_client(token, client)
+      clients[token] = client
+    end
+
     # Is this layer necessary?
     def client
       @conn
@@ -327,6 +331,10 @@ module Vertebra
       enqueue_synapse(discoverer)
 
       discoverer
+    end
+
+    def send_iq(iq)
+      client.send(iq)
     end
 
     # This method queue an op for each jid, and returns a hash containing the

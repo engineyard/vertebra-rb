@@ -71,15 +71,14 @@ module Vertebra
         requestor = Vertebra::Synapse.new
         requestor[:name] = 'requestor'
         iq = @op.to_iq(@to, @agent.jid)
-        @agent.clients[@op.token] = self
+        @agent.add_client(@op.token, self)
         logger.debug "Assigning client to token #{@op.token}"
         requestor.condition {@agent.connection_is_open_and_authenticated?}
         requestor.callback do
           logger.debug "in requestor callback"
           @last_message_sent = iq
-          @agent.client.send(iq)
+          @agent.send_iq(iq)
         end
-
         @agent.enqueue_synapse(requestor)
       end
 

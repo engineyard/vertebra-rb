@@ -60,25 +60,8 @@ describe Vertebra::Op do
 end
 
 class Mock
-  def initialize
-    @handlers = {}
-  end
-
   def add_handler(symbol, &block)
-    @handlers[symbol] = block
-  end
-
-  def remove_handler(symbol)
-    @handlers.delete(symbol)
-  end
-
-  def method_missing(symbol, *args)
-    method = @handlers[symbol]
-    unless method.nil?
-      method.call(*args)
-    else
-      super
-    end
+    self.class.send(:define_method, symbol, &block)
   end
 end
 
@@ -93,11 +76,12 @@ class MockAgent < Mock
 end
 
 describe Vertebra::Protocol::Client do
+  AGENT_JID = "agent@localhost"
 
   before :all do
     @agent = MockAgent.new
     @op = Vertebra::Op.new("/foo")
-    @to = nil
+    @to = "to@localhost"
     @client = Vertebra::Protocol::Client.new(@agent, @op, @to)
   end
 
@@ -106,20 +90,44 @@ describe Vertebra::Protocol::Client do
     @agent.synapses.size.should == 1
   end
 
-  it 'Should check connection status and defer if jid is busy' do
+  it 'Should defer if connection is not open and authenticated' do
     synapse = @agent.synapses.first
 
-    # Both return false
     @agent.add_handler(:connection_is_open_and_authenticated?) {:deferred}
-    @agent.add_handler(:defer_on_busy_jid?) {|jid| :deferred}
     @agent.synapses.fire
     @agent.synapses.size.should == 1
     @agent.synapses.first.should == synapse
+  end
 
-    # Connection returns true
+  it 'Should defer if there is another IQ in progress to the same jid' do
+    synapse = @agent.synapses.first
+
     @agent.add_handler(:connection_is_open_and_authenticated?) {true}
+    @agent.add_handler(:defer_on_busy_jid?) {|jid| :deferred}
     @agent.synapses.fire
     @agent.synapses.first.should == synapse
+  end
+
+  it 'Should send an IQ' do
+    synapse = @agent.synapses.first
+    actual_iq = nil
+
+    @agent.add_handler(:connection_is_open_and_authenticated?) {true}
+    @agent.add_handler(:defer_on_busy_jid?) {|jid| true}
+    @agent.add_handler(:set_busy_jid) {|jid, client| }
+    @agent.add_handler(:jid) { AGENT_JID }
+    @agent.add_handler(:add_client) {|token, client| }
+    @agent.add_handler(:send_iq) {|iq| actual_iq = iq}
+
+    @agent.synapses.fire
+    expected_iq = @op.to_iq(@to, AGENT_JID)
+    # The nodes have different 'id' attributes until I set them. I'm not
+    # worried about what the 'id' is, so I'm just going to make sure they're
+    # equal.
+    iq_id = actual_iq.root_node.get_attribute('id')
+    expected_iq.root_node.set_attribute('id', iq_id)
+
+    actual_iq.root_node.to_s.should == expected_iq.root_node.to_s
   end
 end
 
