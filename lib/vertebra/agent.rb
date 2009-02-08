@@ -18,6 +18,7 @@
 require 'vertebra/dispatcher'
 require 'vertebra/actor'
 require 'vertebra/synapse'
+require 'vertebra/synapse_queue'
 
 begin
   #require 'ruby-growl'
@@ -61,8 +62,8 @@ module Vertebra
       @active_clients = []
       @connection_in_progress = false
       @authentication_in_progress = false
-      @synapse_queue = []
       @deja_vu_map = Hash.new {|h,k| h[k] = {}}
+      @synapse_queue = Vertebra::SynapseQueue.new
 
       @advertise_timer_started = false
       @herault_jid = opts[:herault_jid] || 'herault@localhost/herault'
@@ -121,21 +122,7 @@ module Vertebra
     end
 
     def fire_synapses
-      new_synapse_queue = []
-      @synapse_queue.each do |synapse|
-        next unless synapse && synapse.respond_to?(:deferred_status?) # Defend against somehow getting a non-synapse in here.
-        ds = synapse.deferred_status?
-        case ds
-        when :succeeded
-          synapse.set_deferred_status(:succeeded,synapse)
-        when :failed
-          synapse.set_deferred_status(:failed,synapse)
-        else
-          new_synapse_queue << synapse
-        end
-      end
-
-      @synapse_queue = new_synapse_queue
+      @synapse_queue.fire
     end
 
     def monitor_connection_status
