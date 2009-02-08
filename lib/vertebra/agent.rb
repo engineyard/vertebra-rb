@@ -63,6 +63,7 @@ module Vertebra
       @connection_in_progress = false
       @authentication_in_progress = false
       @synapse_queue = []
+      @deja_vu_map = Hash.new {|h,k| h[k] = {}}
 
       @advertise_timer_started = false
       @herault_jid = opts[:herault_jid] || 'herault@localhost/herault'
@@ -430,9 +431,12 @@ module Vertebra
     end
     
     def handle_iq(iq)
+      # TODO: Refactor this enormous method.
+      
       logger.debug "handle_iq: #{iq.node}"
       unhandled = true
       
+      # Handle errors
       if iq.sub_type == LM::MessageSubType::ERROR
         unhandled = false
         error = iq.node.get_child('error')
@@ -464,6 +468,14 @@ module Vertebra
           enqueue_synapse(error_handler)
         end
       end
+
+      # Handle Duplicates
+      # To do this, check the received packet against the deja_vu_map.
+      # If there is a match, then we have seen it before in an existing
+      # conversation.
+      # If we have seen it before, then either:
+      # It's a RESULT, and we'll just drop it on the floor.
+      # Or it is a SET, and we need to do something sensible with it.
 
       # Protocol::Server
       if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
@@ -604,8 +616,17 @@ module Vertebra
       end
 
       if unhandled
-        # If it can't be matched to anything else, throw back a 406.
-        logger.debug "#{iq.node} getting dropped, unhandled"
+        # Make sure this isn't something that we just don't care about, like an
+        # <iq type="result"><session>
+        
+        case iq.node.child.name
+        when 'session'
+          # Yeah, don't care about these
+          logger.debug "#{iq.node} getting ignored; uninteresting"
+        else
+          # If it can't be matched to anything else, throw back a 406.
+        end
+        
       end
     end
 
