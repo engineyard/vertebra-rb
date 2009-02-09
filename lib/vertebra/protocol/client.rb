@@ -113,7 +113,7 @@ module Vertebra
         result_iq.node.raw_mode = true
         result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
         result_iq.node.set_attribute('xml:lang','en')
-        result_iq.node.value = packet
+        result_iq.node.value = stanza
         result_iq.root_node.set_attribute('type', 'result')
 
         response = Vertebra::Synapse.new

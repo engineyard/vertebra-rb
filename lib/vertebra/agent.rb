@@ -449,10 +449,9 @@ module Vertebra
           resender = Vertebra::Synapse.new
           resender.condition { connection_is_open_and_authenticated? }
           resender.callback do
-            sleep Math.log(delay + 0.1)
             client.send(cl.last_message_sent)
           end
-          enqueue_synapse(resender)
+          GLib::Timeout.add((Math.log(delay + 0.1) * 1000).to_i) { enqueue_synapse(resender); false}
         else
           logger.debug "XMPP error: #{error.to_s}; aborting"
           error_handler = Vertebra::Synapse.new
