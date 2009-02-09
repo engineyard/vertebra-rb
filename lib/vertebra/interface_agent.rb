@@ -85,7 +85,7 @@ module Vertebra
       begin
         res = nil
         @client.send_with_id(iq) do |answer|
-          logger.debug "Heralt Discovered: #{answer}"
+          logger.debug "Herault Discovered: #{answer}"
           if answer.type == :result
             res = Vertebra::Marshal.decode(answer.first_element('result'))
           end
