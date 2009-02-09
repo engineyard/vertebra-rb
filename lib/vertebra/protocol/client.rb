@@ -37,9 +37,9 @@ module Vertebra
     # When the "final" stanza comes in, it enters the Commit state, in which it signals the code
     # that all of the data has been received.
 
-    # TODO: In two places in the original code, an IQ packet was being sent without
+    # TODO: In two places in the original code, an IQ stanza was being sent without
     # the protocol caring about the response.  This really is broken behavior, and
-    # should be fixed.  The reason -- if that 'result' packet doesn't arrive in a
+    # should be fixed.  The reason -- if that 'result' stanza doesn't arrive in a
     # reasonable amount of time, then that's a retry situation.  The way the code
     # is right now, though, that particular failure will never be detected.
 
@@ -97,16 +97,16 @@ module Vertebra
         end
       end
 
-      def process_ack_or_nack(iq, packet_type, packet)
+      def process_ack_or_nack(iq, stanza_type, stanza)
         #TODO: Add state checking code so that we don't get messed up by
-        #unexpected packets.
+        #unexpected stanzas.
 
         logger.debug "Client#process_ack_or_nack: #{iq.node}"
-        case packet_type
+        case stanza_type
         when :ack
           @state = :consume
         when :nack
-          @result = "Auth Failure; #{packet}"
+          @result = "Auth Failure; #{stanza}"
           @state = :authfail
         end
 
@@ -114,7 +114,7 @@ module Vertebra
         result_iq.node.raw_mode = true
         result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
         result_iq.node.set_attribute('xml:lang','en')
-        result_iq.node.value = packet
+        result_iq.node.value = stanza
         result_iq.root_node.set_attribute('type', 'result')
 
         response = Vertebra::Synapse.new
@@ -129,16 +129,16 @@ module Vertebra
         @agent.enqueue_synapse(response)
       end
 
-      def process_result_or_final(iq, packet_type, packet)
+      def process_result_or_final(iq, stanza_type, stanza)
         logger.debug "Client#process_result_or_final: #{iq.node}"
-        case packet_type
+        case stanza_type
         when :result
-          raw_element = REXML::Document.new(packet.to_s).root
+          raw_element = REXML::Document.new(stanza.to_s).root
           (@results ||= []) << Vertebra::Marshal.decode(raw_element)
           raw_element.children.each {|e| raw_element.delete e}
         when :error
           @state = :error
-          raw_element = REXML::Document.new(packet.to_s).root
+          raw_element = REXML::Document.new(stanza.to_s).root
           results = @results
           @results = {:error => Vertebra::Marshal.decode(raw_element["error"]), :results => results}
           @agent.clients.delete(token)
@@ -151,7 +151,7 @@ module Vertebra
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
         result_iq.node.raw_mode = true
         result_iq.node.set_attribute('id', iq.node.get_attribute('id'))
-        result_iq.node.value = packet
+        result_iq.node.value = stanza
         result_iq.node.set_attribute('type', 'result')
         response = Vertebra::Synapse.new
         response[:name] = 'process_result_or_final response'

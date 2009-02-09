@@ -43,13 +43,13 @@ Client responds to  result:
 	</iq>	
 
 
-Client receives final packet
+Client receives final stanza
     <iq from='rd00-n00@localhost/agent' type='set' to='rd00-s00000@localhost/agent' id='170571' xml:lang='en'>
 	  <final token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8'/>
 	</iq>
 
 
-Client responds to final packet
+Client responds to final stanza
     <iq from='rd00-s00000@localhost/agent' type='result' id='170571' to='rd00-n00@localhost/agent' xmlns='jabber:client'>
 	  <final token='7e5293c579f4a9fa8da6320e9ef03e3f:fdef628240e1bfedc7e6ae17fd9213a8'/>
     </iq>

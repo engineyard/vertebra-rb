@@ -83,9 +83,9 @@ if __FILE__ == $0
   q = PersistentQueues.new 'q.db'
   start = Time.now
   [*0..99].each do |a|
-    q.push 'iqs', "some packet: #{a}"
-    q.push 'msg', "some packet: #{a}"
-    q.push 'auth', "some packet: #{a}"
+    q.push 'iqs', "some stanza: #{a}"
+    q.push 'msg', "some stanza: #{a}"
+    q.push 'auth', "some stanza: #{a}"
   end
 
   puts "Pushed 300 messages in: #{Time.now - start}"

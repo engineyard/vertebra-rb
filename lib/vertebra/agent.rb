@@ -442,9 +442,9 @@ module Vertebra
         # Check to see if the error is one we want to retry.
         if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
           # If it is...RETRY
-          packet = iq.node.child
+          stanza = iq.node.child
           # First, find the conversation that caused the error.
-          token = parse_token(packet)
+          token = parse_token(stanza)
  
           cl = @clients[token]
           delay = cl.last_message_sent.node['retry_delay'].to_i || 0
@@ -469,7 +469,7 @@ module Vertebra
       end
 
       # Handle Duplicates
-      # To do this, check the received packet against the deja_vu_map.
+      # To do this, check the received stanza against the deja_vu_map.
       # If there is a match, then we have seen it before in an existing
       # conversation.
       # If we have seen it before, then either:
