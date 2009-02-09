@@ -163,18 +163,19 @@ module Vertebra
           error = false
           begin
             logger.debug "handling #{@op}"
-            @agent.dispatcher.handle(@op) do |response, final|
-              result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-              result_iq.node.raw_mode = true
-              result_iq.root_node.set_attribute('type', 'set')
+            result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+            result_iq.node.raw_mode = true
+            result_iq.root_node.set_attribute('type', 'set')
+            result_tag = Vertebra::Result.new(token)
 
-              result_tag = Vertebra::Result.new(token)
+            @agent.dispatcher.handle(@op) do |response, final|
               Vertebra::Marshal.encode(response).children.each do |ch|
                 result_tag.add(ch)
               end
-              result_iq.node.value = result_tag.to_s
               logger.debug "SENDING #{result_iq.node}"
             end
+            result_iq.node.value = result_tag.to_s
+
           rescue Exception => e
             logger.error "operation FAILED #{@op}: #{e.class}: #{e.message}"
             error_tag = Vertebra::Error.new(token)

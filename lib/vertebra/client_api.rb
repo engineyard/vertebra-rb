@@ -79,13 +79,16 @@ module Vertebra
         end
       end
       jids = discover(op_type,*resources)
+
       if Array === jids
         target_jids = jids.concat(specific_jids)
       else
         target_jids = jids['jids'].concat(specific_jids)
       end
 
-      if scope == :all
+      if jids.empty?
+        []
+      elsif scope == :all
         gather(scatter(target_jids, op_type, *cooked_args))
       else
         # FIXME

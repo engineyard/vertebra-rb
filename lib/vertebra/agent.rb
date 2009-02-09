@@ -319,7 +319,9 @@ module Vertebra
             target_jids = jids['jids'].concat(specific_jids)
           end
 
-          if scope == :all
+          if jids.empty?
+            discoverer[:results] = []
+          elsif scope == :all
             gather(discoverer, target_jids, op_type, *cooked_args)
           else
             gather_first(discoverer, target_jids, op_type, *cooked_args)
