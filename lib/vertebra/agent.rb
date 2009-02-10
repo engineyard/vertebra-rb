@@ -324,7 +324,7 @@ module Vertebra
           if scope == :all
             gather(discoverer, target_jids, op_type, *cooked_args)
           else
-            gather_first(discoverer, target_jids, op_type, *cooked_args)
+            gather_first(discoverer, target_jids.sort_by { rand }.first, op_type, *cooked_args)
           end
         end
 
