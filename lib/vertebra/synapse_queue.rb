@@ -8,6 +8,10 @@ module Vertebra
       @queue << synapse
     end
 
+    def clear
+      @queue = []
+    end
+
     def fire
       new_queue = []
       @queue.each do |synapse|
