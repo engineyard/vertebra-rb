@@ -28,7 +28,7 @@ module Vertebra
           @logger = Logger.new($stderr)
         end
       else
-        "/tmp/agent.#{Process.pid}.log"
+        log_path = "/tmp/agent.#{Process.pid}.log"
       end
 
       unless @logger
