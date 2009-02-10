@@ -100,7 +100,7 @@ module Vertebra
     end
 
     def install_periodic_actions
-      GLib::Timeout.add(2) { fire_synapses; true }
+      GLib::Timeout.add(20) { fire_synapses; true }
       GLib::Timeout.add(1000) { clear_busy_jids; true }
       GLib::Timeout.add(2000) { monitor_connection_status; true }
       GLib::Timeout.add(800) { GC.start; true}
