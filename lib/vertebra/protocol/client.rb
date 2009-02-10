@@ -159,7 +159,9 @@ module Vertebra
           logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
           @last_message_sent = result_iq
           @agent.send_iq(result_iq)
-          @agent.remove_busy_jid(@to)
+          if [:final, :error].include?(stanza_type)
+            @agent.remove_busy_jid(@to,self)
+          end
         end
 
         @agent.enqueue_synapse(response)

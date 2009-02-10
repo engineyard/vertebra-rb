@@ -206,8 +206,16 @@ module Vertebra
       @busy_jids[jid] = client
     end
 
-    def remove_busy_jid(jid)
-      @busy_jids.delete(jid)
+    def remove_busy_jid(jid, client)
+      if locking_client = @busy_jids[jid]
+        if locking_client == client
+          @busy_jids.delete(jid)
+        else
+          raise "Busy JID Client mismatch for #{jid.inspect}, offending client is #{client.inspect}"
+        end
+      else
+        raise "Busy JID Client not found for #{jid.inspect}, offending client is #{client.inspect}"
+      end
     end
 
     def clear_busy_jids
