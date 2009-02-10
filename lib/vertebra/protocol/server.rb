@@ -69,7 +69,7 @@ module Vertebra
         responder.condition { @agent.connection_is_open_and_authenticated? }
         responder.callback do
           @last_message_sent = result_iq
-          @agent.client.send(result_iq)
+          @agent.send_iq(result_iq)
           @state = :verify
           process_authorization
         end
@@ -121,7 +121,7 @@ module Vertebra
         acknowledger.condition { @agent.connection_is_open_and_authenticated? }
         acknowledger.callback do
           @last_message_sent = iq
-          @agent.client.send(iq)
+          @agent.send_iq(iq)
         end
         @agent.enqueue_synapse(acknowledger)
       end
@@ -139,7 +139,7 @@ module Vertebra
           # FIXME: This is probably wrong; I am betting this code should probably
           # expect the response to the nack, so that it can retry.
           @last_message_sent = iq
-          @agent.client.send(iq)
+          @agent.send_iq(iq)
           @agent.servers.delete iq.node['token']
           process_terminate
         end
@@ -188,7 +188,7 @@ module Vertebra
             logger.debug "SENDING ERROR: #{error_iq.node}"
 
             notifier.callback do
-              @agent.client.send(error_iq)
+              @agent.send_iq(error_iq)
             end
             @agent.enqueue_synapse(notifier)
             error = true
@@ -197,7 +197,7 @@ module Vertebra
           unless error
             logger.debug "setting up notifier for final"
             notifier.callback do
-              @agent.client.send(result_iq)
+              @agent.send_iq(result_iq)
             end
             @agent.enqueue_synapse(notifier)
           end
@@ -213,7 +213,7 @@ module Vertebra
         final_tag = ::Vertebra::Final.new(token)
         final_iq.node.add_child final_tag
         logger.debug "  Send Final"
-        @agent.client.send(final_iq)
+        @agent.send_iq(final_iq)
       end
 
       def process_final

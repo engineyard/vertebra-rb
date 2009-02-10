@@ -122,7 +122,7 @@ module Vertebra
         response.callback do
           logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
           @last_message_sent = result_iq
-          @agent.client.send(result_iq)
+          @agent.send_iq(result_iq)
         end
 
         @agent.enqueue_synapse(response)
@@ -158,7 +158,7 @@ module Vertebra
         response.callback do
           logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
           @last_message_sent = result_iq
-          @agent.client.send(result_iq)
+          @agent.send_iq(result_iq)
           @agent.remove_busy_jid(@to)
         end
 

@@ -112,11 +112,6 @@ module Vertebra
       clients[token] = client
     end
 
-    # Is this layer necessary?
-    def client
-      @conn
-    end
-
     def clear_queues
       # I don't think there's any reason for this, anymore.
     end
@@ -334,7 +329,7 @@ module Vertebra
     end
 
     def send_iq(iq)
-      client.send(iq)
+      @conn.send(iq)
     end
 
     # This method queue an op for each jid, and returns a hash containing the
@@ -449,7 +444,7 @@ module Vertebra
           resender = Vertebra::Synapse.new
           resender.condition { connection_is_open_and_authenticated? }
           resender.callback do
-            client.send(cl.last_message_sent)
+            send_iq(cl.last_message_sent)
           end
           GLib::Timeout.add((Math.log(delay + 0.1) * 1000).to_i) { enqueue_synapse(resender); false}
         else
