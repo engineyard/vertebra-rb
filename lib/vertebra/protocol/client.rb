@@ -46,14 +46,20 @@ module Vertebra
     class Client
       DONE_STATES = [:commit, :authfail, :error]
 
-      attr_accessor :token, :agent, :last_message_sent
       attr_reader :state, :to
+
+      def self.start(agent, op, to)
+        new(agent, op, to).start
+      end
 
       def initialize(agent, op, to)
         @agent = agent
         @state = :new
         @to = to
         @op = op
+      end
+
+      def start
         initiator = Vertebra::Synapse.new
         initiator[:name] = 'initiator'
         initiator.condition { @agent.connection_is_open_and_authenticated? }
@@ -65,6 +71,7 @@ module Vertebra
         end
 
         @agent.enqueue_synapse(initiator)
+        self
       end
 
       def make_request
@@ -96,6 +103,19 @@ module Vertebra
         end
       end
 
+      def resend
+        delay = @last_message_sent.node['retry_delay'].to_i || 0
+        delay += 1
+        @last_message_sent.node['retry_delay'] = delay.to_s
+        logger.debug "Resending #{@last_message_sent.node}"
+        resender = Vertebra::Synapse.new
+        resender.condition { @agent.connection_is_open_and_authenticated? }
+        resender.callback do
+          @agent.send_iq(@last_message_sent)
+        end
+        GLib::Timeout.add((Math.log(delay + 0.1) * 1000).to_i) { @agent.enqueue_synapse(resender); false}
+      end
+
       def process_ack_or_nack(iq, stanza_type, stanza)
         #TODO: Add state checking code so that we don't get messed up by
         #unexpected stanzas.
@@ -122,7 +142,7 @@ module Vertebra
         response.callback do
           logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
           @last_message_sent = result_iq
-          @agent.client.send(result_iq)
+          @agent.send_iq(result_iq)
         end
 
         @agent.enqueue_synapse(response)
@@ -158,8 +178,10 @@ module Vertebra
         response.callback do
           logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
           @last_message_sent = result_iq
-          @agent.client.send(result_iq)
-          @agent.remove_busy_jid(@to)
+          @agent.send_iq(result_iq)
+          if [:final, :error].include?(stanza_type)
+            @agent.remove_busy_jid(@to,self)
+          end
         end
 
         @agent.enqueue_synapse(response)

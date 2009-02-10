@@ -112,11 +112,6 @@ module Vertebra
       clients[token] = client
     end
 
-    # Is this layer necessary?
-    def client
-      @conn
-    end
-
     def clear_queues
       # I don't think there's any reason for this, anymore.
     end
@@ -211,8 +206,16 @@ module Vertebra
       @busy_jids[jid] = client
     end
 
-    def remove_busy_jid(jid)
-      @busy_jids.delete(jid)
+    def remove_busy_jid(jid, client)
+      if locking_client = @busy_jids[jid]
+        if locking_client == client
+          @busy_jids.delete(jid)
+        else
+          raise "Busy JID Client mismatch for #{jid.inspect}, offending client is #{client.inspect}"
+        end
+      else
+        raise "Busy JID Client not found for #{jid.inspect}, offending client is #{client.inspect}"
+      end
     end
 
     def clear_busy_jids
@@ -255,15 +258,15 @@ module Vertebra
 
     def direct_op(op_type, to, *args)
       op = Vertebra::Op.new(op_type, *args)
-      client = Vertebra::Protocol::Client.new(self, op, to)
       logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
-      client
+      Vertebra::Protocol::Client.start(self, op, to)
     end
 
     def op(op_type, to, *args)
       # The old op() model doesn't work in an evented architecture, since it is blocking.
       # TODO: Figure out if we need to simulate it somehow (i.e. fake fibers with threads
       # to make it look blocking) or if direct_op() is sufficient.
+      raise "This is probably not needed"
     end
 
     # #discover takes as args a list of resources either in string form
@@ -324,7 +327,7 @@ module Vertebra
           elsif scope == :all
             gather(discoverer, target_jids, op_type, *cooked_args)
           else
-            gather_first(discoverer, target_jids, op_type, *cooked_args)
+            gather_first(discoverer, target_jids.sort_by { rand }.first, op_type, *cooked_args)
           end
         end
 
@@ -336,7 +339,7 @@ module Vertebra
     end
 
     def send_iq(iq)
-      client.send(iq)
+      @conn.send(iq)
     end
 
     # This method queue an op for each jid, and returns a hash containing the
@@ -443,17 +446,7 @@ module Vertebra
           # First, find the conversation that caused the error.
           token = parse_token(stanza)
 
-          cl = @clients[token]
-          delay = cl.last_message_sent.node['retry_delay'].to_i || 0
-          delay += 1
-          cl.last_message_sent.node['retry_delay'] = delay.to_s
-          logger.debug "Resending #{cl.last_message_sent.node}"
-          resender = Vertebra::Synapse.new
-          resender.condition { connection_is_open_and_authenticated? }
-          resender.callback do
-            client.send(cl.last_message_sent)
-          end
-          GLib::Timeout.add((Math.log(delay + 0.1) * 1000).to_i) { enqueue_synapse(resender); false}
+          @clients[token].resend
         else
           logger.debug "XMPP error: #{error.to_s}; aborting"
           error_handler = Vertebra::Synapse.new
