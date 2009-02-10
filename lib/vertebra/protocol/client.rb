@@ -196,10 +196,6 @@ module Vertebra
       def done?
         DONE_STATES.include? @state
       end
-
-      def remove_client(token)
-        clients.delete(token)
-      end
     end
   end
 end

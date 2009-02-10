@@ -112,6 +112,10 @@ module Vertebra
       clients[token] = client
     end
 
+    def remove_client(token)
+      clients.delete(token)
+    end
+
     def clear_queues
       # I don't think there's any reason for this, anymore.
     end
