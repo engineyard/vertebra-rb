@@ -266,6 +266,7 @@ module Vertebra
       # The old op() model doesn't work in an evented architecture, since it is blocking.
       # TODO: Figure out if we need to simulate it somehow (i.e. fake fibers with threads
       # to make it look blocking) or if direct_op() is sufficient.
+      raise "This is probably not needed"
     end
 
     # #discover takes as args a list of resources either in string form
