@@ -103,6 +103,19 @@ module Vertebra
         end
       end
 
+      def resend
+        delay = @last_message_sent.node['retry_delay'].to_i || 0
+        delay += 1
+        @last_message_sent.node['retry_delay'] = delay.to_s
+        logger.debug "Resending #{@last_message_sent.node}"
+        resender = Vertebra::Synapse.new
+        resender.condition { @agent.connection_is_open_and_authenticated? }
+        resender.callback do
+          @agent.send_iq(@last_message_sent)
+        end
+        GLib::Timeout.add((Math.log(delay + 0.1) * 1000).to_i) { @agent.enqueue_synapse(resender); false}
+      end
+
       def process_ack_or_nack(iq, stanza_type, stanza)
         #TODO: Add state checking code so that we don't get messed up by
         #unexpected stanzas.

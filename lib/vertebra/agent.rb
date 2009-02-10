@@ -444,17 +444,7 @@ module Vertebra
           # First, find the conversation that caused the error.
           token = parse_token(stanza)
 
-          cl = @clients[token]
-          delay = cl.last_message_sent.node['retry_delay'].to_i || 0
-          delay += 1
-          cl.last_message_sent.node['retry_delay'] = delay.to_s
-          logger.debug "Resending #{cl.last_message_sent.node}"
-          resender = Vertebra::Synapse.new
-          resender.condition { connection_is_open_and_authenticated? }
-          resender.callback do
-            send_iq(cl.last_message_sent)
-          end
-          GLib::Timeout.add((Math.log(delay + 0.1) * 1000).to_i) { enqueue_synapse(resender); false}
+          @clients[token].resend
         else
           logger.debug "XMPP error: #{error.to_s}; aborting"
           error_handler = Vertebra::Synapse.new
