@@ -258,9 +258,8 @@ module Vertebra
 
     def direct_op(op_type, to, *args)
       op = Vertebra::Op.new(op_type, *args)
-      client = Vertebra::Protocol::Client.new(self, op, to)
       logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
-      client
+      Vertebra::Protocol::Client.start(self, op, to)
     end
 
     def op(op_type, to, *args)

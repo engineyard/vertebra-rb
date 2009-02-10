@@ -46,14 +46,20 @@ module Vertebra
     class Client
       DONE_STATES = [:commit, :authfail, :error]
 
-      attr_accessor :token, :agent, :last_message_sent
       attr_reader :state, :to
+
+      def self.start(agent, op, to)
+        new(agent, op, to).start
+      end
 
       def initialize(agent, op, to)
         @agent = agent
         @state = :new
         @to = to
         @op = op
+      end
+
+      def start
         initiator = Vertebra::Synapse.new
         initiator[:name] = 'initiator'
         initiator.condition { @agent.connection_is_open_and_authenticated? }
@@ -65,6 +71,7 @@ module Vertebra
         end
 
         @agent.enqueue_synapse(initiator)
+        self
       end
 
       def make_request

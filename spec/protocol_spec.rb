@@ -82,7 +82,7 @@ describe Vertebra::Protocol::Client do
     @agent = MockAgent.new
     @op = Vertebra::Op.new("/foo")
     @to = "to@localhost"
-    @client = Vertebra::Protocol::Client.new(@agent, @op, @to)
+    @client = Vertebra::Protocol::Client.start(@agent, @op, @to)
   end
 
   it 'Should enqueue a synapse during initialization' do
