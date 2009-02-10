@@ -20,15 +20,25 @@ require 'fileutils'
 
 module Vertebra
   def self.logger
-    if !defined?(@@logger)
+    unless @logger
       # If the log_path isn't specified in the configuration, default to /tmp/agent.PID
-      path = (Vertebra.config && Vertebra.config[:log_path]) ? Vertebra.config[:log_path] : "/tmp/agent.#{Process.pid}.log"
-      log_dir = File.dirname(path)
-      FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
-      @@logger = Logger.new(path)
-      @@logger.datetime_format = "%Y-%m-%d %H:%M:%S"
+      if Vertebra.config && log_path = Vertebra.config[:log_path]
+        case log_path
+        when :error
+          @logger = Logger.new($stderr)
+        end
+      else
+        "/tmp/agent.#{Process.pid}.log"
+      end
+
+      unless @logger
+        log_dir = File.dirname(log_path)
+        FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
+        @logger = Logger.new(log_path)
+      end
+      @logger.datetime_format = "%Y-%m-%d %H:%M:%S"
     end
-    @@logger
+    @logger
   end
 end
 
