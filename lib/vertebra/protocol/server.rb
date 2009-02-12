@@ -136,14 +136,15 @@ module Vertebra
         terminator = Vertebra::Synapse.new
         terminator.condition { @agent.connection_is_open_and_authenticated? }
         terminator.callback do
-          # FIXME: This is probably wrong; I am betting this code should probably
-          # expect the response to the nack, so that it can retry.
           @last_message_sent = iq
           @agent.send_iq(iq)
-          @agent.servers.delete iq.node['token']
-          process_terminate
         end
         @agent.enqueue_synapse(terminator)
+      end
+      
+      def process_nack_result
+				@agent.servers.delete @iq.node['token']
+				process_terminate
       end
 
       def process_operation
