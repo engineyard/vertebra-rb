@@ -34,7 +34,7 @@ module Vertebra
     attr_accessor :drb_port
     attr_reader :jid
 
-    attr_accessor :dispatcher, :herault_jid, :clients, :servers
+    attr_accessor :dispatcher, :herault_jid, :clients, :servers, :conn
     attr_reader :ttl
 
     BUSY_CHECK_INTERVAL = 0.1
@@ -442,18 +442,20 @@ module Vertebra
         # Check to see if the error is one we want to retry.
         if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
           # If it is...RETRY
-          stanza = iq.node.child
           # First, find the conversation that caused the error.
-          token = parse_token(stanza)
-
+          token = parse_token(iq.node.child)
+          # Then resend.
           @clients[token].resend
         else
-          logger.debug "XMPP error: #{error.to_s}; aborting"
-          error_handler = Vertebra::Synapse.new
-          error_handler[:client] = client
-          error_handler[:state] = :error
-          error_handler.callback {logger.debug "error"; client.process_result_or_final(iq, :error, error)}
-          enqueue_synapse(error_handler)
+          token = parse_token(iq.node.child)
+          client = @clients[token]
+          if client
+            logger.debug "XMPP error: #{error.to_s}; aborting"
+            error_handler = Vertebra::Synapse.new
+            error_handler[:state] = :error
+            error_handler.callback {logger.debug "error"; client.process_result_or_final(iq, :error, error)}
+            enqueue_synapse(error_handler)
+          end
         end
       end
 
@@ -612,7 +614,22 @@ module Vertebra
           # Yeah, don't care about these
           logger.debug "#{iq.node} getting ignored; uninteresting"
         else
-          # If it can't be matched to anything else, throw back a 406.
+          # TODO: This feels kind of gross, below.  I want a better API for doing
+          # this stuff without inserting transport layer specific manipulations
+          # into the core of the code.
+          if iq.sub_type == LM::MessageSubType::SET
+            error_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::ERROR)
+            error_iq.node.set_attribute("id", iq.node.get_attribute("id"))
+            error_iq.node.set_attribute('xml:lang','en')
+            error_iq.node.add_child iq.node
+            error_iq.node.add_child('error')
+            error_iq.node.child['code'] = 400
+            error_iq.node.child['type'] = 'modify'
+            error_iq.node.add_child('bad-request')
+            error_iq.node.child.next['xmlns'] = 'urn:ietf:params:xml:ns:xmpp-stanzas'
+            @conn.send(error_iq)
+            logger.debug('Sending error: #{error_iq}')
+          end
         end
 
       end

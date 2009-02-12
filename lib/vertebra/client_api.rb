@@ -16,6 +16,7 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'vertebra/resource'
+require 'loudmouth'
 
 module Vertebra
   class ClientAPI
@@ -90,8 +91,9 @@ module Vertebra
         []
       elsif scope == :all
         gather(scatter(target_jids, op_type, *cooked_args))
+      elsif scope == :any
+        # TODO: Implement this.
       else
-        # FIXME
         gather(scatter(target_jids.sort_by { rand }.first, op_type, *cooked_args), true)
       end
     end
@@ -123,18 +125,33 @@ module Vertebra
 
     def advertise_op(resources, ttl = @handle.ttl)
       client = @handle.direct_op('/security/advertise',
-                                 @handle.herault_jid,
-                                 :resources => resources,
-                                 :ttl => ttl
-                                )
+        @handle.herault_jid,
+        :resources => resources,
+        :ttl => ttl)
 
-                                while !(z = client.done?)
-                                  sleep 0.05
-                                end
+      while !(z = client.done?)
+        sleep 0.05
+      end
     end
 
     def unadvertise_op(resources)
       advertise_op(resources,0)
+    end
+
+    def send_packet(*args)
+      iq = LM::Message.new(to,LM::MessageType::IQ)
+      iq.node.raw_mode = true
+      iq.root_node.set_attribute('type',typ)
+      iq.node.value = packet.to_s
+      @handle.send_iq(iq)
+    end
+    
+    def send_packet_with_reply(*args)
+      iq = LM::Message.new(to,LM::MessageType::IQ)
+      iq.node.raw_mode = true
+      iq.root_node.set_attribute('type',typ)
+      iq.node.value = packet.to_s
+      @handle.conn.send_with_reply(iq) {|resp_iq| logger.debug "DEBUGGING PACKET: #{resp_iq.node.to_s}" }
     end
 
   end
