@@ -76,6 +76,9 @@ module Vertebra
       @enable_logging = false
       @discovery_only = false
 
+      # Default to showing help
+      ARGV[0] = '--help' if ARGV.empty?
+
       # First, find the few command line flags that need special handling.
       args_to_remove = []
       ARGV.each_with_index do |arg, idx|
