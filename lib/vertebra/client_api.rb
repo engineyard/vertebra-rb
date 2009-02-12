@@ -138,7 +138,7 @@ module Vertebra
       advertise_op(resources,0)
     end
 
-    def send_packet(*args)
+    def send_packet(to,typ,packet)
       iq = LM::Message.new(to,LM::MessageType::IQ)
       iq.node.raw_mode = true
       iq.root_node.set_attribute('type',typ)
@@ -146,7 +146,7 @@ module Vertebra
       @handle.send_iq(iq)
     end
     
-    def send_packet_with_reply(*args)
+    def send_packet_with_reply(to,typ,packet)
       iq = LM::Message.new(to,LM::MessageType::IQ)
       iq.node.raw_mode = true
       iq.root_node.set_attribute('type',typ)
