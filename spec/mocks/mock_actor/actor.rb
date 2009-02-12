@@ -35,6 +35,24 @@ module MockActor
     def list_letters(options = {})
       ['a', 'b', 'c']
     end
+
+    bind_op "/list/slow", :list_slow
+    desc "/list/slow", "Get a list of letters and numbers, slowly"
+    def list_slow(options = {})
+      size = options['size'].to_i
+      size = 32 if size == 0
+
+      lambda do |acc, n|
+        acc << 'abcdef0123456789'[rand(16)].chr
+        n -= 1
+        sleep 1
+        if n == 0
+          acc
+        else
+          redo
+        end
+      end.call('',size)
+    end
   end
 end
 

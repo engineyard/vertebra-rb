@@ -62,7 +62,7 @@ module Vertebra
       @active_clients = []
       @connection_in_progress = false
       @authentication_in_progress = false
-      @deja_vu_map = Hash.new {|h1,k1| h1[k1] = Hash.new {|h2,k2| h2[k2] = {}}
+      @deja_vu_map = Hash.new {|h1,k1| h1[k1] = Hash.new {|h2,k2| h2[k2] = {}}}
       @synapse_queue = Vertebra::SynapseQueue.new
 
       @advertise_timer_started = false
