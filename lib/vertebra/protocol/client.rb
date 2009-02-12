@@ -164,6 +164,7 @@ module Vertebra
         when :final
           @state = :commit
           logger.debug "DELETING TOKEN #{@agent.parse_token(iq.node.find_child('final'))}"
+          @agent.deja_vu_map.delete(iq.node['token'])
           @agent.clients.delete(@agent.parse_token(iq.node.find_child('final')))
         end
 

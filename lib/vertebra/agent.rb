@@ -34,7 +34,7 @@ module Vertebra
     attr_accessor :drb_port
     attr_reader :jid
 
-    attr_accessor :dispatcher, :herault_jid, :clients, :servers, :conn
+    attr_accessor :dispatcher, :herault_jid, :clients, :servers, :conn, :deja_vu_map
     attr_reader :ttl
 
     BUSY_CHECK_INTERVAL = 0.1
@@ -524,6 +524,7 @@ module Vertebra
       # Protocol::Server
       if @unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
         token = parse_token(op)
+        @deja_vu_map[token][iq.node['id']] = iq
         logger.debug "in op set; token: #{token}/#{token.size}"
         @unhandled = false
         # The protocol object will take care of enqueing itself.
@@ -566,8 +567,10 @@ module Vertebra
     def handle_ack_set(iq)
       # Protocol::Client
       if @unhandled && (ack = iq.node.get_child('ack')) && iq.sub_type == LM::MessageSubType::SET
-        client = @clients[parse_token(ack)]
+        token = parse_token(ack)
+        client = @clients[token]
         if client
+          @deja_vu_map[token][iq.node['id']] = iq
           ack_handler = Vertebra::Synapse.new
           ack_handler[:client] = client
           ack_handler[:state] = :ack
@@ -596,8 +599,10 @@ module Vertebra
     def handle_nack_set(iq)
       # Protocol::Client
       if @unhandled && (nack = iq.node.get_child('nack')) && iq.sub_type == LM::MessageSubType::SET
-        client = @clients[parse_token(nack)]
+        token = parse_token(nack)
+        client = @clients[token]
         if client
+          @deja_vu_map[token][iq.node['id']] = iq
           nack_handler = Vertebra::Synapse.new
           nack_handler[:client] = client
           nack_handler[:state] = :nack
@@ -626,8 +631,10 @@ module Vertebra
     def handle_data_set(iq)
       # Protocol::Client
       if @unhandled && (result = iq.node.get_child('result')) && iq.sub_type == LM::MessageSubType::SET
-        client = @clients[parse_token(result)]
+        token = parse_token(result)
+        client = @clients[token]
         if client
+          @deja_vu_map[token][iq.node['id']] = iq
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = client
           result_handler[:state] = :result
@@ -657,8 +664,10 @@ module Vertebra
     def handle_final_set(iq)
       # Protocol::Client
       if @unhandled && (final = iq.node.get_child('final')) && iq.sub_type == LM::MessageSubType::SET
-        client = @clients[parse_token(final)]
+        token = parse_token(final)
+        client = @clients[token]
         if client
+          @deja_vu_map[token][iq.node['id']] = iq
           final_handler = Vertebra::Synapse.new
           final_handler[:client] = client
           final_handler[:state] = :final
