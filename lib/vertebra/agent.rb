@@ -62,7 +62,7 @@ module Vertebra
       @active_clients = []
       @connection_in_progress = false
       @authentication_in_progress = false
-      @deja_vu_map = Hash.new {|h,k| h[k] = {}}
+      @deja_vu_map = Hash.new {|h1,k1| h1[k1] = Hash.new {|h2,k2| h2[k2] = {}}
       @synapse_queue = Vertebra::SynapseQueue.new
 
       @advertise_timer_started = false
@@ -96,7 +96,7 @@ module Vertebra
     def install_signal_handlers
       trap('SIGINT') {stop}
       trap('SIGTERM') {stop}
-      trap('SIGUSR1') {GC.start; File.open('/tmp/objdump','w+') {|fh| ObjectSpace.each_object {|o| fh.puts "#{o} -- #{o.inspect}"}}; GC.start}
+      trap('SIGUSR1') {GC.start; File.open('/tmp/objdump','w+') {|fh| GC.start; ObjectSpace.each_object {|o| fh.puts "#{o} -- #{o.inspect}"}}; GC.start}
     end
 
     def install_periodic_actions
@@ -461,6 +461,7 @@ module Vertebra
 
       # Handle Duplicates
       # To do this, check the received stanza against the deja_vu_map.
+
       # If there is a match, then we have seen it before in an existing
       # conversation.
       # If we have seen it before, then either:
@@ -471,16 +472,10 @@ module Vertebra
       if unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
         token = parse_token(op)
         logger.debug "in op set; token: #{token}/#{token.size}"
-        if token.size == 32
-          unhandled = false
-          # The protocol object will take care of enqueing itself.
-          logger.debug "Creating server protocol"
-          Vertebra::Protocol::Server.new(self,iq)
-        else
-          # TODO: Should we do anything if the op has a token of incorrect
-          # length? Some sort of error response? Assume crap is broken and
-          # abort, I assume.
-        end
+        unhandled = false
+        # The protocol object will take care of enqueing itself.
+        logger.debug "Creating server protocol"
+        Vertebra::Protocol::Server.new(self,iq)
       end
 
       # Protocol::Client
@@ -494,8 +489,6 @@ module Vertebra
           clients.delete(left)
           client.is_ready
           unhandled = false
-        else
-          # TODO: Ditto; what do we do if the token is malformed?  Abort, I assume.
         end
       end
 
