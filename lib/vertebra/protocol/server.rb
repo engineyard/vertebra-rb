@@ -161,11 +161,13 @@ module Vertebra
           notifier.condition { @agent.connection_is_open_and_authenticated? }
 
           error = false
+          
+          logger.debug "handling #{@op}"
+          result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+#          result_iq.node.raw_mode = true
+          result_iq.root_node.set_attribute('type', 'set')
+
           begin
-            logger.debug "handling #{@op}"
-            result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-            result_iq.node.raw_mode = true
-            result_iq.root_node.set_attribute('type', 'set')
             result_tag = Vertebra::Result.new(token)
 
             @agent.dispatcher.handle(@op) do |response, final|
@@ -174,8 +176,8 @@ module Vertebra
               end
               logger.debug "SENDING #{result_iq.node}"
             end
-            result_iq.node.value = result_tag.to_s
-
+            result_iq.node.add_child result_tag
+            
           rescue Exception => e
             logger.error "operation FAILED #{@op}: #{e.class}: #{e.message}"
             error_tag = Vertebra::Error.new(token)
