@@ -53,13 +53,17 @@ module Vertebra
     method_options :config_file => :optional
 
     def status(options = {})
-      pid = IO.read(@config[:pid_path]).chomp.to_i
-      if Process.is_running?(pid)
-        psdata = `ps up #{pid}`.split("\n").last.split
-        memory = (psdata[5].to_i / 1024)
-        puts "The agent is alive, using #{memory}MB of memory"
+      pid = IO.read(@config[:pid_path]).chomp.to_i rescue nil
+      if pid
+        if Process.is_running?(pid)
+          psdata = `ps up #{pid}`.split("\n").last.split
+          memory = (psdata[5].to_i / 1024)
+          puts "The agent is alive, using #{memory}MB of memory"
+        else
+          puts "The agent is not running but has a stale pid file at #{@config[:pid_path]}"
+        end
       else
-        puts "The agent is not running but has a stale pid file at #{@config[:pid_path]}"
+        puts "The agent is not running."
       end
     end
 

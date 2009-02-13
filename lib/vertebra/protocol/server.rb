@@ -219,7 +219,7 @@ module Vertebra
         final_iq.node.add_child final_tag
         logger.debug "  Send Final"
         @agent.send_iq(final_iq)
-        #@agent.deja_vu_map.delete(@iq.node['token'])
+        @agent.deja_vu_map.delete(@iq.node['token'])
       end
 
       def process_final

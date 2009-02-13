@@ -26,7 +26,7 @@ module Vertebra
       required_resources.each do |req|
         accepted = false
         provided_resources.each do |prov|
-          if req >= prov
+          if prov >= req
             accepted = true
             break
           end

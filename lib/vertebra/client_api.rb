@@ -138,21 +138,12 @@ module Vertebra
       advertise_op(resources,0)
     end
 
-    def send_packet(to,typ,packet)
-#      iq = LM::Message.new(to,LM::MessageType::IQ)
-#      iq.node.raw_mode = true
-#      iq.root_node.set_attribute('type',typ)
-#      iq.node.value = packet.to_s
-#      @handle.send_iq(iq)
-      @handle.send_packet(to, typ, packet)
+    def send_packet(*args)
+      @handle.send_packet(*args)
     end
     
-    def send_packet_with_reply(to,typ,packet)
-      iq = LM::Message.new(to,LM::MessageType::IQ)
-      iq.node.raw_mode = true
-      iq.root_node.set_attribute('type',typ)
-      iq.node.value = packet.to_s
-      @handle.conn.send_with_reply(iq) {|resp_iq| logger.debug "DEBUGGING PACKET: #{resp_iq.node.to_s}" }
+    def send_packet_with_reply(*args)
+      @handle.send_packet_with_reply(*args)
     end
 
   end

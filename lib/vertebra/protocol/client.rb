@@ -159,19 +159,20 @@ module Vertebra
           @state = :error
           raw_element = REXML::Document.new(stanza.to_s).root
           results = @results
-          @results = {:error => Vertebra::Marshal.decode(raw_element["error"]), :results => results}
-          @agent.clients.delete(token)
+          @results = {:error => Vertebra::Marshal.decode(raw_element), :results => results}
+          @agent.remove_client(@agent.parse_token(iq.node.find_child('error')))
         when :final
           @state = :commit
           logger.debug "DELETING TOKEN #{@agent.parse_token(iq.node.find_child('final'))}"
           @agent.deja_vu_map.delete(iq.node['token'])
-          @agent.clients.delete(@agent.parse_token(iq.node.find_child('final')))
+          @agent.remove_client(@agent.parse_token(iq.node.find_child('final')))
         end
 
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
         result_iq.node.raw_mode = true
         result_iq.node.set_attribute('id', iq.node.get_attribute('id'))
         result_iq.node.value = stanza
+        result_iq.node.set_attribute('xml:lang','en')
         result_iq.node.set_attribute('type', 'result')
         response = Vertebra::Synapse.new
         response[:name] = 'process_result_or_final response'

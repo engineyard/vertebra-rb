@@ -112,6 +112,10 @@ module Vertebra
       clients[token] = client
     end
 
+    def remove_client(token)
+      clients.delete(token)
+    end
+
     def clear_queues
       # I don't think there's any reason for this, anymore.
     end
@@ -341,13 +345,23 @@ module Vertebra
       @conn.send(iq)
     end
 
-    def send_packet(to,typ,packet) # This exists only for debugging purposes.
+    def send_packet(to,typ,packet_id,packet) # This exists only for debugging purposes.
       iq = LM::Message.new(to,LM::MessageType::IQ)
+      iq.node['id'] = packet_id.to_s
       iq.node.raw_mode = true
       iq.root_node.set_attribute('type',typ)
       iq.node.value = packet.to_s
       logger.debug("SENDING TEST PACKET #{iq.node}")
       send_iq(iq)
+    end
+
+    def send_packet_with_reply(to,typ,packet_id,packet) # This exists only for debugging purposes.
+      iq = LM::Message.new(to,LM::MessageType::IQ)
+      iq.node['id'] = packet_id.to_s
+      iq.node.raw_mode = true
+      iq.root_node.set_attribute('type',typ)
+      iq.node.value = packet.to_s
+      @conn.send_with_reply(iq) {|resp_iq| logger.debug "DEBUGGING PACKET: #{resp_iq.node.to_s}" }
     end
 
     # This method queue an op for each jid, and returns a hash containing the
@@ -499,7 +513,6 @@ module Vertebra
         iq_id = iq.node['id']
         if duplicate = @deja_vu_map[token][iq_id]
           @unhandled = false
-          
           # If there is a match, then we have seen it before in an existing
           # conversation.
           # If we have seen it before, then either:
@@ -518,11 +531,12 @@ module Vertebra
 
             response = Vertebra::Synapse.new
             response[:name] = 'duplicate response'
-            response.condition { @agent.connection_is_open_and_authenticated? }
+            response.condition { connection_is_open_and_authenticated? }
             response.callback do
               logger.debug "Agent#handle_duplicates: sending #{result_iq.node}"
               send_iq(result_iq)
             end
+            enqueue_synapse(response)
           end
         end
       end
