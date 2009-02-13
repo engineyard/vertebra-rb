@@ -238,7 +238,6 @@ module Vertebra
       end
 
       @conn.add_message_handler(LM::MessageType::IQ) do |iq|
-        logger.debug "GOT IQ #{iq.node.class}"
         handle_iq(iq)
       end
     end
@@ -342,12 +341,21 @@ module Vertebra
       @conn.send(iq)
     end
 
+    def send_packet(to,typ,packet) # This exists only for debugging purposes.
+      iq = LM::Message.new(to,LM::MessageType::IQ)
+      iq.node.raw_mode = true
+      iq.root_node.set_attribute('type',typ)
+      iq.node.value = packet.to_s
+      logger.debug("SENDING TEST PACKET #{iq.node}")
+      send_iq(iq)
+    end
+
     # This method queue an op for each jid, and returns a hash containing the
     # client protocol object for each.
     def scatter(jids, op_type, *args)
       ops = {}
       jids.each do |jid|
-        logger.debug "scatter# #{op_type}/#{jid}/#{args.inspect}"
+        logger.debug "scatter# #{op_type} | #{jid} | #{args.inspect}"
         ops[jid] = direct_op(op_type, jid, *args)
       end
       ops
@@ -466,7 +474,7 @@ module Vertebra
           # First, find the conversation that caused the error.
           token = parse_token(iq.node.child)
           # Then resend.
-          @clients[token].resend
+          @clients[token].resend if @clients.has_key?(token) # Don't call resend() if the client can't be found.
         else
           token = parse_token(iq.node.child)
           client = @clients[token]
@@ -708,17 +716,20 @@ module Vertebra
           # this stuff without inserting transport layer specific manipulations
           # into the core of the code.
           if iq.sub_type == LM::MessageSubType::SET
-            error_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::ERROR)
+            error_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
+            error_iq.node['type'] = 'error'
             error_iq.node.set_attribute("id", iq.node.get_attribute("id"))
             error_iq.node.set_attribute('xml:lang','en')
-            error_iq.node.add_child iq.node
+            
+            error_iq.node.raw_mode = true
+            error_iq.node.value = iq.node.child
             error_iq.node.add_child('error')
-            error_iq.node.child['code'] = 400
+            error_iq.node.child['code'] = '400'
             error_iq.node.child['type'] = 'modify'
-            error_iq.node.add_child('bad-request')
-            error_iq.node.child.next['xmlns'] = 'urn:ietf:params:xml:ns:xmpp-stanzas'
+            error_iq.node.child.add_child('bad-request')
+            error_iq.node.child.child['xmlns'] = 'urn:ietf:params:xml:ns:xmpp-stanzas'
             @conn.send(error_iq)
-            logger.debug('Sending error: #{error_iq}')
+            logger.debug("Sending error: #{error_iq.node}")
           end
         end
       end

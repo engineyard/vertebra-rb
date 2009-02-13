@@ -24,7 +24,12 @@ module Vertebra
       params = args.pop if args.last.is_a? Hash
       hsh = {}
       args.each do |arg|
-        hsh[arg] = res(arg)
+        if arg.to_s =~ /^\//
+          hsh[arg] = res(arg)
+        elsif arg.to_s =~ /=/
+          k,v = arg.to_s.split(/=/,2)
+          hsh[k] = v
+        end
       end
 
       # if the last resource is a hash, it's assumed that it's an argument hash

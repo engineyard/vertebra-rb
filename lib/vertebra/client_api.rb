@@ -139,11 +139,12 @@ module Vertebra
     end
 
     def send_packet(to,typ,packet)
-      iq = LM::Message.new(to,LM::MessageType::IQ)
-      iq.node.raw_mode = true
-      iq.root_node.set_attribute('type',typ)
-      iq.node.value = packet.to_s
-      @handle.send_iq(iq)
+#      iq = LM::Message.new(to,LM::MessageType::IQ)
+#      iq.node.raw_mode = true
+#      iq.root_node.set_attribute('type',typ)
+#      iq.node.value = packet.to_s
+#      @handle.send_iq(iq)
+      @handle.send_packet(to, typ, packet)
     end
     
     def send_packet_with_reply(to,typ,packet)

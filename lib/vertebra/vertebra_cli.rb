@@ -201,7 +201,7 @@ EHELP
             end
           end
         else
-          puts "Making request for #{@op}" if @verbose
+          puts "Making request for #{@op} #{@scope} #{@parsed_args.inspect}" if @verbose
           request = agent.request(@op,@scope,*@parsed_args)
           GLib::Timeout.add(50) do
             if request[:results]
