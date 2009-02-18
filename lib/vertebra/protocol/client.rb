@@ -32,14 +32,14 @@ module Vertebra
     # In the ready state, the client waits for and responds to an Acknowledgement stanza.
     # It can also receive a Negative Acknowledgement, which causes it to enter a "Auth Fail" state.
     #
-    # When the "result" stanzas start coming in, it enters the Consume state, and responds for each of them.
+    # When the "data" stanzas start coming in, it enters the Consume state, and responds for each of them.
     #
     # When the "final" stanza comes in, it enters the Commit state, in which it signals the code
     # that all of the data has been received.
 
     # TODO: In two places in the original code, an IQ stanza was being sent without
     # the protocol caring about the response.  This really is broken behavior, and
-    # should be fixed.  The reason -- if that 'result' stanza doesn't arrive in a
+    # should be fixed.  The reason -- if that 'data' stanza doesn't arrive in a
     # reasonable amount of time, then that's a retry situation.  The way the code
     # is right now, though, that particular failure will never be detected.
 

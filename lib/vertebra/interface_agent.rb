@@ -87,7 +87,7 @@ module Vertebra
         @client.send_with_id(iq) do |answer|
           logger.debug "Herault Discovered: #{answer}"
           if answer.type == :result
-            res = Vertebra::Marshal.decode(answer.first_element('result'))
+            res = Vertebra::Marshal.decode(answer.first_element('data'))
           end
         end
       rescue Vertebra::JabberError => e
@@ -176,11 +176,11 @@ module Vertebra
     def get_final_results(id)
       res = nil
       final_results do |iq|
-        result = iq.first_element('result')
+        result = iq.first_element('data')
         if result.attributes['token'].split(':').first == id
           status = result.attributes['status']
           not_authed = REXML::XPath.first( result, "//not-authorized" )
-          res = [not_authed ? {'response' => 'NOT AUTHORIZED'} : Vertebra::Marshal.decode(iq.first_element('result')), status]
+          res = [not_authed ? {'response' => 'NOT AUTHORIZED'} : Vertebra::Marshal.decode(iq.first_element('data')), status]
         else
           queue(:final_results) << iq
         end

@@ -637,13 +637,13 @@ module Vertebra
     
     def handle_data_result(iq)
       # Protocol::Server
-      if @unhandled && (result = iq.node.get_child('result')) && iq.sub_type == LM::MessageSubType::RESULT
+      if @unhandled && (result = iq.node.get_child('data')) && iq.sub_type == LM::MessageSubType::RESULT
         server = @servers[parse_token(result)]
         if server
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = server
           result_handler[:state] = :result
-          result_handler.callback {logger.debug "result"; server.process_result_result(result)}
+          result_handler.callback {logger.debug "data"; server.process_result_result(result)}
           enqueue_synapse(result_handler)
           @unhandled = false
         end
@@ -652,7 +652,7 @@ module Vertebra
     
     def handle_data_set(iq)
       # Protocol::Client
-      if @unhandled && (result = iq.node.get_child('result')) && iq.sub_type == LM::MessageSubType::SET
+      if @unhandled && (result = iq.node.get_child('data')) && iq.sub_type == LM::MessageSubType::SET
         token = parse_token(result)
         client = @clients[token]
         if client
@@ -660,7 +660,7 @@ module Vertebra
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = client
           result_handler[:state] = :result
-          result_handler.callback {logger.debug "result"; client.process_result_or_final(iq, :result, result)}
+          result_handler.callback {logger.debug "data"; client.process_result_or_final(iq, :result, result)}
           enqueue_synapse(result_handler)
           @unhandled = false
         end

@@ -29,7 +29,7 @@ module Vertebra
     # An Acknowledgement or Negative Acknowledgement response is sent and the
     # reply triggers state change to the Producing state.
     #
-    # In the Producing state, "result" stanzas are sent in rapid succession.
+    # In the Producing state, "data" stanzas are sent in rapid succession.
     # When no more results will be generated, the Flush state is entered.
     #
     # In the Flush state, any outstanding "result" confirmations are collected.

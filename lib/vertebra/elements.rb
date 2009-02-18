@@ -56,7 +56,7 @@ module Vertebra
 
 
   class Result < BaseElement
-    name_xmlns 'result', 'http://xmlschema.engineyard.com/agent/api'
+    name_xmlns 'data', 'http://xmlschema.engineyard.com/agent/api'
   end
 
   class Error < BaseElement
