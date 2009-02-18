@@ -30,18 +30,25 @@ describe 'Vertebra Resource' do
 
   it '/ should be >= /foo' do
     (Resource.new('/') >= Resource.new('/foo')).should be_true
+    (Resource.new('/bar') >= Resource.new('/foo')).should be_false
   end
 
   it '/foo/ should be <= /' do
     (Resource.new('/foo') <= Resource.new('/')).should be_true
+    (Resource.new('/foo') <= Resource.new('/foo')).should be_true
+    (Resource.new('/foo') <= Resource.new('/bar')).should be_false
   end
 
   it '/foo should be >= /foo/bar' do
     (Resource.new('/foo') >= Resource.new('/foo/bar')).should be_true
+    (Resource.new('/foo/bar') >= Resource.new('/foo/bar')).should be_true
+    (Resource.new('/bar/foo') >= Resource.new('/foo/bar')).should be_false
   end
 
   it '/foo/bar should be <= /foo' do
     (Resource.new('/foo/bar') <= Resource.new('/foo')).should be_true
+    (Resource.new('/foo/bar') <= Resource.new('/foo/bar')).should be_true
+    (Resource.new('/foo/bar') <= Resource.new('/bar/foo')).should be_false
   end
 
   it "should be uniq" do
@@ -50,10 +57,12 @@ describe 'Vertebra Resource' do
 
   it "/foo should be > /foo/bar" do
     (Resource.new('/foo') > Resource.new('/foo/bar')).should be_true
+    (Resource.new('/foo/bar') > Resource.new('/foo/bar')).should be_false
   end
 
   it '/foo/bar should be < /foo' do
     (Resource.new('/foo/bar') < Resource.new('/foo')).should be_true
+    (Resource.new('/foo/bar') < Resource.new('/foo/bar')).should be_false
   end
 
   it 'it should compare' do
