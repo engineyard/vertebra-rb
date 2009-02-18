@@ -26,14 +26,14 @@ describe 'vconfiggen. The vertebra config generator' do
     command = "#{File.dirname(__FILE__)}/../bin/vconfiggen --no-questions --vertebra-dir #{vtempdir} --ejabberd-dir #{etempdir}"
     system(command)
 
-system('ls -lart /tmp')
-
     contents = File.read("#{vtempdir}/agent.yml")
     contents.should match(/log_path:/)
 
     contents = File.read("#{etempdir}/ejabberd.cfg")
     contents.should match(/This config must be in UTF-8 encoding/)
   end
+
+  # TODO: Write more tests, including tests that generate a single file.
 
   after(:all) do
     FileUtils::rm_rf(vtempdir)

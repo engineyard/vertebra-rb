@@ -29,6 +29,8 @@ describe 'vactorgen. The vertebra actor generator' do
     contents.should match(/module\s+TestActor/)
   end
 
+  # TODO: Write more tests, including tests that generate single files.
+
   after(:all) do
     FileUtils::rm_rf(tempdir)
   end
