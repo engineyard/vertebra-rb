@@ -60,7 +60,10 @@ describe Vertebra::Op do
 end
 
 class Mock
+  attr_accessor :deja_vu_map
+
   def initialize
+    @deja_vu_map = {}
     yield(self) if block_given?
   end
 
