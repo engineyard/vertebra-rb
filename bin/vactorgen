@@ -39,7 +39,7 @@ module Vertebra
       }
 
       OptionParser.new do |opts|
-        opts.banner = 'Usage: vactorgen [options] [actor_dir]'
+        opts.banner = 'Usage: vactorgen [options] [actor_dir] [file1, file2, filen]'
         opts.separator ''
 
         opts.on('-v','--verbose','Be wordy when giving feedback about what is happening') do |conf|
@@ -100,8 +100,14 @@ module Vertebra
         end
       end.parse!
 
-      dirname = @config['destination_dir'] || ARGV .first # Look at 'destination_dir' in case that was defined in the conf file.
-      @config[:destination_dir] = dirname if dirname
+      if @config['destination_dir']
+        @config[:destination_dir] = @config['destination_dir']
+      elsif ARGV.first && FileTest.directory?(ARGV.first)
+        @config[:destination_dir] = ARGV.shift
+      end
+
+      filenames = ARGV.reject {|f| f =~ /^\s*$/}
+      @config[:specific_files] = filenames unless filenames.empty?
     end
 
     def self.walk_through_questions

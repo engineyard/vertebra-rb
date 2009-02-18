@@ -59,6 +59,9 @@ module GeneratorCore
   #     is here to provide flexibility to use semantically applicable naming
   #     inside the templates. i.e. in an actor generator, the config hash could
   #     be aliased to @actor.
+  #
+  #   :specific_files -- Generate only the specific files listed in the array
+  #     passed in this option.
   #####
 
   def self.generate_files(config = {})
@@ -98,11 +101,26 @@ module GeneratorCore
     begin
       FileUtils.mkdir_p(File.dirname(config[:destination_dir]),file_utils_options.dup) unless FileTest.exist? config[:destination_dir]
       if tmpdir
-        FileUtils.cp_r("#{tmpdir}/.",config[:destination_dir],file_utils_options.dup)
+        if config[:specific_files]
+          
+          config[:specific_files].each do |f|
+            FileUtils.cp_r(File.join(tmpdir,f),config[:destination_dir],file_utils_options.dup) if FileTest.exists? File.join(tmpdir,f)
+          end
+        else
+          FileUtils.cp_r("#{tmpdir}/.",config[:destination_dir],file_utils_options.dup)
+        end
       else
-        FileUtils.cp_r(skeleton_directory,config[:destination_dir],file_utils_options.dup)
+        if config[:specific_files]
+          config[:specific_files].each do |f|
+            FileUtils.cp_r(File.join(skeleton_directory,f),config[:destination_dir],file_utils_options.dup) if FileTest.exists? File.join(skeleton_directory,f)
+          end
+        else
+          FileUtils.cp_r(skeleton_directory,config[:destination_dir],file_utils_options.dup)
+        end
       end
     rescue Exception => e
+      puts e.to_s
+      puts e.backtrace.inspect
       raise NoDestinationFound.new(e)
     end
 
@@ -120,7 +138,9 @@ module GeneratorCore
         template = ERB.new(File.read(__path))
         puts "Modifying #{__path}" if config[:verbose]
         begin
-          File.open(__path,'w') {|fh| fh.write template.result(binding)}
+          File.open(__path,'w') do |fh|
+            fh.write template.result(binding)
+          end
         rescue Exception => e
           raise TemplateEvaluationFailed.new(e)
         end

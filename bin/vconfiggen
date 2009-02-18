@@ -36,7 +36,7 @@ module Vertebra
       }
 
       OptionParser.new do |opts|
-        opts.banner = 'Usage: vconfiggen [options]'
+        opts.banner = 'Usage: vconfiggen [options] [file1, file2, filen]'
         opts.separator ''
 
         opts.on('-v','--verbose','Be wordy when giving feedback about what is happening') do |conf|
@@ -92,6 +92,8 @@ module Vertebra
           @config = new_config.merge(@config)
         end
       end.parse!
+      filenames = ARGV.reject {|f| f =~ /^\s*$/}
+      @config[:specific_files] = filenames unless filenames.empty?
     end
 
     def self.walk_through_questions
