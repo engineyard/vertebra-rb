@@ -22,6 +22,7 @@ describe 'vactorgen. The vertebra actor generator' do
   tempdir = "/tmp/vertebra_spec_vactorgen_test_#{$$}"
 
   it 'vactorgen smoketest' do
+    ENV['RUBYLIB'] = "#{ENV['RUBYLIB']}:#{File.dirname(__FILE__)}/../lib"
     command = "#{File.dirname(__FILE__)}/../bin/vactorgen --no-questions -n testactor -c TestActor #{tempdir}"
     system(command)
 

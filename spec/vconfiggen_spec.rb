@@ -23,6 +23,7 @@ describe 'vconfiggen. The vertebra config generator' do
   etempdir = "/tmp/vertebra_spec_vconfiggen_test_e_#{$$}"
 
   it 'vconfiggen smoketest' do
+    ENV['RUBYLIB'] = "#{ENV['RUBYLIB']}:#{File.dirname(__FILE__)}/../lib"
     command = "#{File.dirname(__FILE__)}/../bin/vconfiggen --no-questions --vertebra-dir #{vtempdir} --ejabberd-dir #{etempdir}"
     system(command)
 
