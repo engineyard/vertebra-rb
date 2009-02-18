@@ -23,7 +23,7 @@ include Vertebra
 describe 'Agent-related elements' do
 
   before do
-    @agent_classes = [Authorization, Ack, Result, Operation, Res]
+    @agent_classes = [Authorization, Ack, Vertebra::Data, Operation, Res]
   end
 
   it 'have agent api xml namespace' do

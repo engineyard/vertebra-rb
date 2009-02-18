@@ -99,7 +99,7 @@ module Vertebra
         when :ready
           process_ack_or_nack(iq)
         when :consume
-          process_result_or_final(iq)
+          process_data_or_final(iq)
         end
       end
 
@@ -148,8 +148,8 @@ module Vertebra
         @agent.enqueue_synapse(response)
       end
 
-      def process_result_or_final(iq, stanza_type, stanza)
-        logger.debug "Client#process_result_or_final: #{iq.node}"
+      def process_data_or_final(iq, stanza_type, stanza)
+        logger.debug "Client#process_data_or_final: #{iq.node}"
         case stanza_type
         when :result
           raw_element = REXML::Document.new(stanza.to_s).root
@@ -175,10 +175,10 @@ module Vertebra
         result_iq.node.set_attribute('xml:lang','en')
         result_iq.node.set_attribute('type', 'result')
         response = Vertebra::Synapse.new
-        response[:name] = 'process_result_or_final response'
+        response[:name] = 'process_data_or_final response'
         response.condition { @agent.connection_is_open_and_authenticated? }
         response.callback do
-          logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
+          logger.debug "Client#process_data_or_final: sending #{result_iq.node}"
           @last_message_sent = result_iq
           @agent.send_iq(result_iq)
           if [:final, :error].include?(stanza_type)

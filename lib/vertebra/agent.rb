@@ -496,7 +496,7 @@ module Vertebra
             logger.debug "XMPP error: #{error.to_s}; aborting"
             error_handler = Vertebra::Synapse.new
             error_handler[:state] = :error
-            error_handler.callback {logger.debug "error"; client.process_result_or_final(iq, :error, error)}
+            error_handler.callback {logger.debug "error"; client.process_data_or_final(iq, :error, error)}
             enqueue_synapse(error_handler)
           end
         end
@@ -643,7 +643,7 @@ module Vertebra
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = server
           result_handler[:state] = :result
-          result_handler.callback {logger.debug "data"; server.process_result_result(result)}
+          result_handler.callback {logger.debug "data"; server.process_data_result(result)}
           enqueue_synapse(result_handler)
           @unhandled = false
         end
@@ -660,7 +660,7 @@ module Vertebra
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = client
           result_handler[:state] = :result
-          result_handler.callback {logger.debug "data"; client.process_result_or_final(iq, :result, result)}
+          result_handler.callback {logger.debug "data"; client.process_data_or_final(iq, :result, result)}
           enqueue_synapse(result_handler)
           @unhandled = false
         end
@@ -693,7 +693,7 @@ module Vertebra
           final_handler = Vertebra::Synapse.new
           final_handler[:client] = client
           final_handler[:state] = :final
-          final_handler.callback {logger.debug "final"; client.process_result_or_final(iq, :final, final)}
+          final_handler.callback {logger.debug "final"; client.process_data_or_final(iq, :final, final)}
           enqueue_synapse(final_handler)
           @unhandled = false
         end

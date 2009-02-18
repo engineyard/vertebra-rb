@@ -169,7 +169,7 @@ module Vertebra
           result_iq.root_node.set_attribute('type', 'set')
 
           begin
-            result_tag = Vertebra::Result.new(token)
+            result_tag = Vertebra::Data.new(token)
 
             @agent.dispatcher.handle(@op) do |response, final|
               Vertebra::Marshal.encode(response).children.each do |ch|
@@ -210,7 +210,7 @@ module Vertebra
         @agent.enqueue_synapse(dispatcher)
       end
 
-      def process_result_result(iq)
+      def process_data_result(iq)
         @state = :flush
         final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
         final_iq.root_node.set_attribute('type', 'set')

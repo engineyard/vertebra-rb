@@ -54,8 +54,7 @@ module Vertebra
     force_xmlns true
   end
 
-
-  class Result < BaseElement
+  class Data < BaseElement
     name_xmlns 'data', 'http://xmlschema.engineyard.com/agent/api'
   end
 
