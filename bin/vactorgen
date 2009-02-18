@@ -102,7 +102,7 @@ module Vertebra
 
       if @config['destination_dir']
         @config[:destination_dir] = @config['destination_dir']
-      elsif ARGV.first && FileTest.directory?(ARGV.first)
+      elsif ARGV.first
         @config[:destination_dir] = ARGV.shift
       end
 
