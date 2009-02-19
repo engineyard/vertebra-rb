@@ -192,7 +192,7 @@ module Vertebra
             logger.debug "SENDING ERROR: #{error_iq.node}"
 
             notifier.callback do
-							@agent.deja_vu_map.delete(iq.node['token'])
+							@agent.deja_vu_map.delete(@iq.node['token'])
               @agent.send_iq(error_iq)
             end
             @agent.enqueue_synapse(notifier)
