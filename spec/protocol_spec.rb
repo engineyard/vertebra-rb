@@ -191,21 +191,21 @@ describe Vertebra::Protocol::Client do
   it 'Should respond to a result when in the consume state' do
     @synapses.clear
     @client.instance_eval { @state = :consume}
-    do_stanza(:process_result_or_final, :result)
+    do_stanza(:process_data_or_final, :result)
     @client.state.should == :consume
   end
 
   it 'Should respond to an error when in the consume state' do
     @synapses.clear
     @client.instance_eval { @state = :consume }
-    do_stanza(:process_result_or_final, :error)
+    do_stanza(:process_data_or_final, :error)
     @client.state.should == :error
   end
 
   it 'Should respond to an final when in the consume state' do
     @synapses.clear
     @client.instance_eval { @state = :consume }
-    do_stanza(:process_result_or_final, :final)
+    do_stanza(:process_data_or_final, :final)
     @client.state.should == :commit
   end
 end

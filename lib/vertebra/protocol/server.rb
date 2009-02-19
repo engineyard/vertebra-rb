@@ -29,7 +29,7 @@ module Vertebra
     # An Acknowledgement or Negative Acknowledgement response is sent and the
     # reply triggers state change to the Producing state.
     #
-    # In the Producing state, "result" stanzas are sent in rapid succession.
+    # In the Producing state, "data" stanzas are sent in rapid succession.
     # When no more results will be generated, the Flush state is entered.
     #
     # In the Flush state, any outstanding "result" confirmations are collected.
@@ -169,7 +169,7 @@ module Vertebra
           result_iq.root_node.set_attribute('type', 'set')
 
           begin
-            result_tag = Vertebra::Result.new(token)
+            result_tag = Vertebra::Data.new(token)
 
             @agent.dispatcher.handle(@op) do |response, final|
               Vertebra::Marshal.encode(response).children.each do |ch|
@@ -210,7 +210,7 @@ module Vertebra
         @agent.enqueue_synapse(dispatcher)
       end
 
-      def process_result_result(iq)
+      def process_data_result(iq)
         @state = :flush
         final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
         final_iq.root_node.set_attribute('type', 'set')

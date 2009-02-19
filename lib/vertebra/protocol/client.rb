@@ -32,14 +32,14 @@ module Vertebra
     # In the ready state, the client waits for and responds to an Acknowledgement stanza.
     # It can also receive a Negative Acknowledgement, which causes it to enter a "Auth Fail" state.
     #
-    # When the "result" stanzas start coming in, it enters the Consume state, and responds for each of them.
+    # When the "data" stanzas start coming in, it enters the Consume state, and responds for each of them.
     #
     # When the "final" stanza comes in, it enters the Commit state, in which it signals the code
     # that all of the data has been received.
 
     # TODO: In two places in the original code, an IQ stanza was being sent without
     # the protocol caring about the response.  This really is broken behavior, and
-    # should be fixed.  The reason -- if that 'result' stanza doesn't arrive in a
+    # should be fixed.  The reason -- if that 'data' stanza doesn't arrive in a
     # reasonable amount of time, then that's a retry situation.  The way the code
     # is right now, though, that particular failure will never be detected.
 
@@ -99,7 +99,7 @@ module Vertebra
         when :ready
           process_ack_or_nack(iq)
         when :consume
-          process_result_or_final(iq)
+          process_data_or_final(iq)
         end
       end
 
@@ -148,8 +148,8 @@ module Vertebra
         @agent.enqueue_synapse(response)
       end
 
-      def process_result_or_final(iq, stanza_type, stanza)
-        logger.debug "Client#process_result_or_final: #{iq.node}"
+      def process_data_or_final(iq, stanza_type, stanza)
+        logger.debug "Client#process_data_or_final: #{iq.node}"
         case stanza_type
         when :result
           raw_element = REXML::Document.new(stanza.to_s).root
@@ -175,10 +175,10 @@ module Vertebra
         result_iq.node.set_attribute('xml:lang','en')
         result_iq.node.set_attribute('type', 'result')
         response = Vertebra::Synapse.new
-        response[:name] = 'process_result_or_final response'
+        response[:name] = 'process_data_or_final response'
         response.condition { @agent.connection_is_open_and_authenticated? }
         response.callback do
-          logger.debug "Client#process_result_or_final: sending #{result_iq.node}"
+          logger.debug "Client#process_data_or_final: sending #{result_iq.node}"
           @last_message_sent = result_iq
           @agent.send_iq(result_iq)
           if [:final, :error].include?(stanza_type)

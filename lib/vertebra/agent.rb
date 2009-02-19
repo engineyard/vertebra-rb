@@ -496,7 +496,7 @@ module Vertebra
             logger.debug "XMPP error: #{error.to_s}; aborting"
             error_handler = Vertebra::Synapse.new
             error_handler[:state] = :error
-            error_handler.callback {logger.debug "error"; client.process_result_or_final(iq, :error, error)}
+            error_handler.callback {logger.debug "error"; client.process_data_or_final(iq, :error, error)}
             enqueue_synapse(error_handler)
           end
         end
@@ -637,13 +637,13 @@ module Vertebra
     
     def handle_data_result(iq)
       # Protocol::Server
-      if @unhandled && (result = iq.node.get_child('result')) && iq.sub_type == LM::MessageSubType::RESULT
+      if @unhandled && (result = iq.node.get_child('data')) && iq.sub_type == LM::MessageSubType::RESULT
         server = @servers[parse_token(result)]
         if server
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = server
           result_handler[:state] = :result
-          result_handler.callback {logger.debug "result"; server.process_result_result(result)}
+          result_handler.callback {logger.debug "data"; server.process_data_result(result)}
           enqueue_synapse(result_handler)
           @unhandled = false
         end
@@ -652,7 +652,7 @@ module Vertebra
     
     def handle_data_set(iq)
       # Protocol::Client
-      if @unhandled && (result = iq.node.get_child('result')) && iq.sub_type == LM::MessageSubType::SET
+      if @unhandled && (result = iq.node.get_child('data')) && iq.sub_type == LM::MessageSubType::SET
         token = parse_token(result)
         client = @clients[token]
         if client
@@ -660,7 +660,7 @@ module Vertebra
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = client
           result_handler[:state] = :result
-          result_handler.callback {logger.debug "result"; client.process_result_or_final(iq, :result, result)}
+          result_handler.callback {logger.debug "data"; client.process_data_or_final(iq, :result, result)}
           enqueue_synapse(result_handler)
           @unhandled = false
         end
@@ -693,7 +693,7 @@ module Vertebra
           final_handler = Vertebra::Synapse.new
           final_handler[:client] = client
           final_handler[:state] = :final
-          final_handler.callback {logger.debug "final"; client.process_result_or_final(iq, :final, final)}
+          final_handler.callback {logger.debug "final"; client.process_data_or_final(iq, :final, final)}
           enqueue_synapse(final_handler)
           @unhandled = false
         end
