@@ -42,8 +42,8 @@ module Vertebra
       @default_resources = resources.map { |res| Vertebra::Resource.new(res) } if resources
     end
 
-    def register(*actors)
-      actors.flatten.each do |actor|
+    def register(actors)
+      actors.each do |actor, actor_config|
         begin
           logger.debug "Requiring #{actor.to_s} from paths #{$:.inspect}"
           require actor.to_s
@@ -53,7 +53,7 @@ module Vertebra
           #logger.debug e.message
         #else
           actor_class = constant(actor.to_s.constantcase)
-          actor_instance = actor_class.new
+          actor_instance = actor_class.new(actor_config)
           actor_instance.agent = @agent
           actor_instance.default_resources = @default_resources
           @actors << actor_instance
