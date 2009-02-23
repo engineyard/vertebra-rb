@@ -75,7 +75,7 @@ module Vertebra
       def bind_op(resource, method_name)
         key = Vertebra::Resource.new(resource.to_s)
         provides "/#{key.res.first}"
-        (@op_table ||= {})[key] = method_name
+        (@op_table ||= Hash.new {|h,k| h[k] = []})[key] << method_name
       end
 
       def lookup_op(resource)
@@ -99,9 +99,11 @@ module Vertebra
 
     def handle_op(op_type, args, &yielder)
       resource = Vertebra::Resource.new(op_type.to_s)
-      method_name = self.class.lookup_op(resource)
-      raise NoMethodError unless method_name
-      self.send(method_name, args, &yielder)
+      method_names = self.class.lookup_op(resource)
+      raise NoMethodError unless method_names
+      r = []
+      method_names.each {|method_name| r << self.send(method_name, args, &yielder)}
+      r
     end
 
     # Specify the resources that the actor provides.  The interface is additive.  That is,
