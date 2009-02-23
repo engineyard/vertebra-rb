@@ -29,6 +29,9 @@ end
 module Vertebra
   class Agent
 
+    SLOW_TIMER_FREQUENCY = 100
+    FAST_TIMER_FREQUENCY = 15
+    
     include Vertebra::Daemon
 
     attr_accessor :drb_port
@@ -37,10 +40,10 @@ module Vertebra
     attr_accessor :dispatcher, :herault_jid, :clients, :servers, :conn, :deja_vu_map
     attr_reader :ttl
 
-    BUSY_CHECK_INTERVAL = 0.1
-
     def initialize(jid, password, opts = {})
       Vertebra.config = @opts = opts
+      
+      @timer_speed = :fast
 
       raise(ArgumentError, "Please provide at least a Jabber ID and password") if !jid || !password
 
@@ -100,12 +103,26 @@ module Vertebra
     end
 
     def install_periodic_actions
-      GLib::Timeout.add(20) { fire_synapses; true }
+      GLib::Timeout.add(20) { synapse_timer_block }
       GLib::Timeout.add(1000) { clear_busy_jids; true }
       GLib::Timeout.add(2000) { monitor_connection_status; true }
       GLib::Timeout.add(800) { GC.start; true}
       GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.
       GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
+    end
+
+    def synapse_timer_block
+      fire_synapses
+      queue_size = @synapse_queue.size
+      
+      if @timer_speed == :fast && queue_size == 0
+        GLib::Timeout.add(SLOW_TIMER_FREQUENCY) {synapse_timer_block}
+        false
+      elsif @timer_speed == :slow && queue_size > 0
+        GLib::Timeout.add(FAST_TIMER_FREQUENCY) {synapse_timer_block}
+      else
+        true
+      end
     end
 
     def add_client(token, client)
