@@ -46,13 +46,23 @@ module MockActor
         acc << 'abcdef0123456789'[rand(16)].chr
         n -= 1
         sleep 1
-        if n == 0
-          acc
-        else
-          redo
-        end
+        n == 0 ? acc : redo
       end.call('',size)
     end
+    
+    bind_op "/list/letters", :list_letters2
+    desc "/list/letters", "Get a list of letters; the list will be a given size, defaulting to 26, but alterable with a size option"
+    def list_letters2(options = {})
+      size = options['size'].to_i
+      size = 26 if size == 0
+      
+      lambda do |acc, n| # This is a silly technique for something this simple, but it's kind cool.
+        acc << ('a'..'z').to_a.join[rand(26)].chr
+        n -= 1
+        n == 0 ? acc : redo
+      end.call('',size)
+    end
+    
   end
 end
 
