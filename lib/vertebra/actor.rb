@@ -89,10 +89,12 @@ module Vertebra
       end
     end
 
-    attr_accessor :default_resources, :agent
+    attr_accessor :config, :default_resources, :agent
 
     # use same method signature as Thor
     def initialize(opts = {}, *args)
+      @config = opts || {}
+      logger.debug "#{self.class} got config #{@config.inspect}"
       @default_resources = nil
       @agent = nil
     end
