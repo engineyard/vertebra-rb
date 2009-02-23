@@ -705,12 +705,12 @@ module Vertebra
       if @unhandled && (error = iq.node.get_child('error')) && iq.sub_type == LM::MessageSubType::RESULT
         token = parse_token(error)
         server = @servers[token]
-        if client
+        if server
           error_handler = Vertebra::Synapse.new
           error_handler[:client] = server
           error_handler[:state] = :error
           error_handler.callback {logger.debug "error"; @servers.delete(token); server.process_error}
-          enqueue_synapse(ack_handler)
+          enqueue_synapse(error_handler)
           @unhandled = false
         end
       end
