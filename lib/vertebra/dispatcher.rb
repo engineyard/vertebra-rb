@@ -66,8 +66,8 @@ module Vertebra
       resources = args.select {|name, value| Vertebra::Resource === value}.
                        map{|_,value| value }
 
-      actors = @actors.select {|actor| self.class.can_provide?(resources, actor.provides)}
-      logger.debug "SELECTED ACTORS: #{actors.inspect}"
+      actors = @actors.select {|actor| logger.debug "can_provide?(#{resources.inspect}, #{actor.provides}"; self.class.can_provide?(resources, actor.provides)}
+      #logger.debug "SELECTED ACTORS: #{actors.inspect}"
       actors
     end
 
@@ -82,6 +82,7 @@ module Vertebra
       raw_element = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(raw_element)
       actors = candidates(args)
+      logger.debug "got actors: #{actors}"
       results_yielded = false
       yielder = Proc.new {|res| yield({:response => res}, false) }
       actors.each_with_index do |actor, index|
