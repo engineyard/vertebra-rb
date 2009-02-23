@@ -103,23 +103,27 @@ module Vertebra
     end
 
     def install_periodic_actions
-      GLib::Timeout.add(20) { synapse_timer_block }
+      GLib::Timeout.add(FAST_TIMER_FREQUENCY) { synapse_timer_block }
       GLib::Timeout.add(1000) { clear_busy_jids; true }
       GLib::Timeout.add(2000) { monitor_connection_status; true }
-      GLib::Timeout.add(800) { GC.start; true}
+      GLib::Timeout.add(8000) { GC.start; true}
       GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.
       GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
     end
 
     def synapse_timer_block
-      fire_synapses
       queue_size = @synapse_queue.size
-      
+      fire_synapses
+            
       if @timer_speed == :fast && queue_size == 0
+        @timer_speed = :slow
         GLib::Timeout.add(SLOW_TIMER_FREQUENCY) {synapse_timer_block}
+        logger.debug "Going to slow timer -- #{SLOW_TIMER_FREQUENCY}"
         false
       elsif @timer_speed == :slow && queue_size > 0
+        @timer_speed = :fast
         GLib::Timeout.add(FAST_TIMER_FREQUENCY) {synapse_timer_block}
+        logger.debug "Going to fast timer"
       else
         true
       end
