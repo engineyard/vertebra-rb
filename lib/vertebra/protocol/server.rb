@@ -187,7 +187,7 @@ module Vertebra
             end
             error_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
             error_iq.node.raw_mode = true
-            error_iq.root_node.set_attribute('type', 'set')
+            error_iq.root_node.set_attribute('type', 'error')
             error_iq.node.value = error_tag.to_s
             logger.debug "SENDING ERROR: #{error_iq.node}"
 
