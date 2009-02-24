@@ -52,4 +52,9 @@ describe 'Vertebra Dispatcher' do
     Dispatcher.can_provide?([res('/cluster')], [res('/bad/rd00')]).should be_false
   end
 
+  it 'should use the op in actor candidate selection' do
+    MockActor::Actor.should === @dispatcher.candidates(['/foo'],'/list/numbers').first
+    MockActor::Actor.should === @dispatcher.candidates(['/foo'],'/list').first
+    @dispatcher.candidates(['/foo'],'/there/is/nothing/here').first.should == nil
+  end
 end

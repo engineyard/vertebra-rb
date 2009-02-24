@@ -118,12 +118,10 @@ module Vertebra
       if @timer_speed == :fast && queue_size == 0
         @timer_speed = :slow
         GLib::Timeout.add(SLOW_TIMER_FREQUENCY) {synapse_timer_block}
-        logger.debug "Going to slow timer -- #{SLOW_TIMER_FREQUENCY}"
         false
       elsif @timer_speed == :slow && queue_size > 0
         @timer_speed = :fast
         GLib::Timeout.add(FAST_TIMER_FREQUENCY) {synapse_timer_block}
-        logger.debug "Going to fast timer"
       else
         true
       end

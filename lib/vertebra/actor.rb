@@ -78,6 +78,10 @@ module Vertebra
         (@op_table ||= Hash.new {|h,k| h[k] = []})[key] << method_name
       end
 
+      def op_table
+        @op_table
+      end
+      
       def lookup_op(resource)
         @op_table[resource]
       end
@@ -97,6 +101,10 @@ module Vertebra
       logger.debug "#{self.class} got config #{@config.inspect}"
       @default_resources = nil
       @agent = nil
+    end
+
+    def op_path_resources
+      self.class.op_table.keys
     end
 
     def handle_op(op_type, args, &yielder)

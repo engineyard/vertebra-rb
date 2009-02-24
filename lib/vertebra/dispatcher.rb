@@ -61,14 +61,19 @@ module Vertebra
       end
     end
 
-    def candidates(args)
+    def candidates(args, op='/')
       logger.debug "in candidates args: #{args.inspect}"
       resources = args.select {|name, value| Vertebra::Resource === value}.
                        map{|_,value| value }
 
-      actors = @actors.select {|actor| logger.debug "can_provide?(#{resources.inspect}, #{actor.provides}"; self.class.can_provide?(resources, actor.provides)}
-      #logger.debug "SELECTED ACTORS: #{actors.inspect}"
-      actors
+      op_resource = Vertebra::Resource.new(op)
+      
+      @actors.select do |actor|
+        logger.debug "can_provide?(#{resources.inspect}, #{actor.provides}"
+        self.class.can_provide?(resources, actor.provides)
+      end.select do |actor|
+        actor.op_path_resources.any? {|r| op_resource >= r}
+      end
     end
 
     # handle takes an <op>eration, decodes the arguments to a ruby hash
@@ -81,7 +86,7 @@ module Vertebra
       logger.debug "Disptcher handling #{op}"
       raw_element = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(raw_element)
-      actors = candidates(args)
+      actors = candidates(args, op)
       logger.debug "got actors: #{actors}"
       results_yielded = false
       yielder = Proc.new {|res| yield({:response => res}, false) }
