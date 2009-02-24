@@ -62,14 +62,13 @@ module Vertebra
     end
 
     def candidates(args, op='/')
-      logger.debug "in candidates args: #{args.inspect}"
+      logger.debug "in candidates (#{op}) -- args: #{args.inspect}"
       resources = args.select {|name, value| Vertebra::Resource === value}.
                        map{|_,value| value }
 
       op_resource = Vertebra::Resource.new(op)
       
       @actors.select do |actor|
-        logger.debug "can_provide?(#{resources.inspect}, #{actor.provides}"
         self.class.can_provide?(resources, actor.provides)
       end.select do |actor|
         actor.op_path_resources.any? {|r| op_resource >= r}
@@ -86,7 +85,7 @@ module Vertebra
       logger.debug "Disptcher handling #{op}"
       raw_element = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(raw_element)
-      actors = candidates(args, op)
+      actors = candidates(args, op['type'])
       logger.debug "got actors: #{actors}"
       results_yielded = false
       yielder = Proc.new {|res| yield({:response => res}, false) }
