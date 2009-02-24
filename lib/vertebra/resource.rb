@@ -72,8 +72,9 @@ module Vertebra
     end
 
     def initialize(res)
-      raise ArgumentError.new("resources *must* start with a / (#{res.inspect})") unless res[0] == ?/
-      @res = res[1..-1].split('/')
+      res_string = res.to_s # This lets one pass a Vertebra::Resource in, and get a copy of it instead of an error.
+      raise ArgumentError.new("resources *must* start with a / (#{res_string.inspect})") unless res_string[0] == ?/
+      @res = res_string[1..-1].split('/')
     end
 
     def to_s
