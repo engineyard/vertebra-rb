@@ -43,22 +43,31 @@ module Vertebra
     end
 
     def register(actors)
+      registered = []
       actors.each do |actor, actor_config|
         begin
           logger.debug "Requiring #{actor.to_s} from paths #{$:.inspect}"
           require actor.to_s
-
-        #rescue LoadError => e
-          #logger.debug "Could not load the actor class at #{actor.to_s}. Is it installed as a gem?"
-          #logger.debug e.message
-        #else
-          actor_class = constant(actor.to_s.constantcase)
+        rescue LoadError => e
+          logger.debug "Could not require #{actor.to_s}. Please verify that it is installed under that name."
+          logger.debug e.message
+        end
+        
+        begin
+          actor_name = actor.to_s.constantcase
+          actor_class = constant(actor_name)
+          logger.debug "Registering #{actor_name} as #{actor_class}"
           actor_instance = actor_class.new(actor_config)
           actor_instance.agent = @agent
           actor_instance.default_resources = @default_resources
           @actors << actor_instance
+          registered << actor_name
+        rescue => e
+          logger.debug "Instantiation of actor #{actor.to_s.constantcase} failed; please confirm that the actor class that is desired carries this name."
+          logger.debug e.message
         end
       end
+      registered
     end
 
     def candidates(args, op='/')

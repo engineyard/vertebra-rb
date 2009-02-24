@@ -57,4 +57,14 @@ describe 'Vertebra Dispatcher' do
     MockActor::Actor.should === @dispatcher.candidates(['/foo'],'/list').first
     @dispatcher.candidates(['/foo'],'/there/is/nothing/here').first.should == nil
   end
+
+  it 'handles missing actor libraries appropriately during registration' do
+    registered = @dispatcher.register(['____xzpq____',nil])
+    registered.length.should == 1
+  end
+
+  it 'handles misnamed actor classes appropriately during registration' do
+    registered = @dispatcher.register(['Parsedate',nil])
+    registered.length.should == 1
+  end
 end
