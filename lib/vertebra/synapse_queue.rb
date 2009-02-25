@@ -13,9 +13,9 @@ module Vertebra
     end
 
     def fire
-      new_queue = []
-      @queue.each do |synapse|
-        # Defend against somehow getting a non-synapse in here.
+      endpoint = @queue.length - 1
+      
+      @queue[0..endpoint].each do |synapse|
         next unless synapse && synapse.respond_to?(:deferred_status?)
         ds = synapse.deferred_status?
         case ds
@@ -24,11 +24,11 @@ module Vertebra
         when :failed
           synapse.set_deferred_status(:failed,synapse)
         else
-          new_queue << synapse
+          @queue << synapse
         end
       end
 
-      @queue = new_queue
+      @queue = (@queue.length > (endpoint + 1)) ? @queue[(endpoint + 1)..-1] : []
     end
 
     def first
