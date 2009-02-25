@@ -349,10 +349,9 @@ module Vertebra
           elsif scope == :all
             gather(discoverer, target_jids, op_type, *cooked_args)
           else
-            gather_first(discoverer, target_jids.sort_by { rand }.first, op_type, *cooked_args)
+            gather_one(discoverer, target_jids.sort_by { rand }, op_type, *cooked_args)
           end
         end
-
         enqueue_synapse(requestor)
       end
       enqueue_synapse(discoverer)
@@ -394,60 +393,6 @@ module Vertebra
       ops
     end
 
-    def gather_first(discoverer, jids, op_type, *args)
-      ops = scatter(jids, op_type, *args)
-      errors = [:error]
-      result = nil
-
-      gatherer = Vertebra::Synapse.new
-      # Check to see if at least one of the clients has finished as is in
-      # The :commit state, or that all of them have finished and none were
-      # in the :commit state.
-      gatherer.condition do
-        finished = false
-        num_finished = 0
-
-        ops.each do |jid, client|
-          num_finished += 1
-          if client.done? && client.state == :commit
-            finished = true
-            break
-          end
-        end
-
-        if finished
-          :succeeded
-        elsif num_finished == ops.size
-          :failed
-        else
-          :deferred
-        end
-      end
-
-      # If there was a successful op, find it and return its result.
-      gatherer.callback do
-        result = nil
-        ops.each do |jid, client|
-          if client.done? && client.state == :commit
-            result = client.results
-            break
-          end
-        end
-
-        discoverer[:results] = result
-      end
-
-      # If there were no successful results, return the array of errors.
-      gatherer.errback do
-        results = [:error]
-        ops.each do |jid, client|
-          results << client.results unless client.results.empty?
-        end
-        discoverer[:results] = results
-      end
-      enqueue_synapse(gatherer)
-    end
-
     def gather(discoverer, jids, op_type, *args)
       ops = scatter(jids, op_type, *args)
 
@@ -465,6 +410,36 @@ module Vertebra
       end
       enqueue_synapse(gatherer)
     end
+
+    def gather_one(discoverer, jids, op_type, *args)
+      nexter = Vertebra::Synapse.new
+      jid = jids.shift
+      op = direct_op(op_type, jid, *args)
+      nexter.condition do
+        op.done? ? :succeeded : :deferred
+      end
+      
+      nexter.callback do
+        if op.state == :commit
+          discoverer[:results] = op.results
+        else
+          # The client is done, but it is not in :commit state, so it failed.
+          # If there are other jids to try, do so.
+          if jids.length > 0
+            gather_one(discoverer, jids, op_type, *args)
+          else
+            # There were no other jids to try, so we're out of targets, and have
+            # no results; this returns an error.
+            # Clarify: Should the code do this, or should it return an array
+            # of ALL of the errors that were received?
+            discoverer[:results] = [:error, "Operation Failed"]
+          end
+        end        
+      end
+      
+      enqueue_synapse(nexter)
+    end
+
 
     def parse_token(iq)
       iq['token']

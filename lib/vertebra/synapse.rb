@@ -31,6 +31,10 @@ module Vertebra
     def []=(key, val)
       (@_data ||= {})[key] = val
     end
+    
+    def has_key?(k)
+      (@_data ||= {}).has_key?(k)
+    end
 
     def condition &block
       return unless block
