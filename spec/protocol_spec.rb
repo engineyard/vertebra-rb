@@ -126,7 +126,8 @@ describe Vertebra::Protocol::Client do
     actual_iq = nil
     @agent.def(:send_iq) {|iq| actual_iq = iq}
 
-    @synapses.fire
+    2.times { @synapses.fire }
+
     expected_iq = @op.to_iq(@to, AGENT_JID)
     # The nodes have different 'id' attributes until I set them. I'm not
     # worried about what the 'id' is, so I'm just going to make sure they're
