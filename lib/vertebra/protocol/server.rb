@@ -44,6 +44,8 @@ module Vertebra
       def initialize(agent,iq)
         @agent = agent
         @state = :new
+        @final_countdown = 0
+        
         receiver = Vertebra::Synapse.new
         receiver.callback do
           receive_request(iq)
@@ -158,68 +160,94 @@ module Vertebra
         dispatcher.condition { @agent.connection_is_open_and_authenticated? }
         dispatcher.callback do
           result_iq = nil
-          notifier = Vertebra::Synapse.new
-          notifier.condition { @agent.connection_is_open_and_authenticated? }
 
           error = false
           
           logger.debug "handling #{@op}"
-          result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-#          result_iq.node.raw_mode = true
-          result_iq.root_node.set_attribute('type', 'set')
+          ops_bucket = nil
 
           begin
-            result_tag = Vertebra::Data.new(token)
-
-            @agent.dispatcher.handle(@op) do |response, final|
-              Vertebra::Marshal.encode(response).children.each do |ch|
-                result_tag.add(ch)
-              end
-              logger.debug "SENDING #{result_iq.node}"
-            end
-            result_iq.node.add_child result_tag
-            
+						ops_bucket = @agent.dispatcher.handle(@op)
           rescue Exception => e
-            logger.error "operation FAILED #{@op}: #{e.class}: #{e.message}"
-            error_tag = Vertebra::Error.new(token)
-            Vertebra::Marshal.encode(:error => e).children.each do |ch|
-              error_tag.add(ch)
-            end
-            error_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-            error_iq.node.raw_mode = true
-            error_iq.root_node.set_attribute('type', 'error')
-            error_iq.node.value = error_tag.to_s
-            logger.debug "SENDING ERROR: #{error_iq.node}"
+	          notifier = Vertebra::Synapse.new
+	          notifier.condition { @agent.connection_is_open_and_authenticated? }
 
-            notifier.callback do
-							@agent.deja_vu_map.delete(@iq.node['token'])
-              @agent.send_iq(error_iq)
-            end
-            @agent.enqueue_synapse(notifier)
-            error = true
+	          result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+						logger.error "operation FAILED #{@op}: #{e.class}: #{e.message}"
+						error_tag = Vertebra::Error.new(token)
+						Vertebra::Marshal.encode(:error => e).children.each do |child|
+							error_tag.add(child) # Insert the marshalled error XML into the error tag
+						end
+						result_iq.root_node.set_attribute('type','error')
+						result_iq.node.add_child error_tag
+						@agent.deja_vu_map.delete(@iq.node['token'])
+						logger.debug "SENDING ERROR: #{result_iq.node}"
           end
 
-          unless error
-            logger.debug "setting up notifier for final"
-            notifier.callback do
-              @agent.send_iq(result_iq)
-            end
-            @agent.enqueue_synapse(notifier)
-          end
+					if ops_bucket
+						bucket_handler = Vertebra::Synapse.new
+						bucket_handler.condition do
+							ops_bucket.has_key?(:results) ? :succeeded : :deferred
+						end
+						
+						bucket_handler.callback do
+							result_iqs = []
+							ops_bucket[:results].each do |result|
+								result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+								result_iq.root_node.set_attribute('type', 'set')
+
+ 
+								logger.debug "RESULT: #{result.inspect}"
+								result_tag = Vertebra::Data.new(token)
+								Vertebra::Marshal.encode({:response => result}).children.each do |child|
+									result_tag.add(child)
+								end
+								logger.debug "ADDING: #{result_tag}"
+							
+								result_iq.root_node.raw_mode = true
+								result_iq.root_node.value = result_tag.to_s
+								logger.debug "FULL IQ: #{result_iq.node}"
+								
+								result_iqs << result_iq
+							end
+							
+			        notifier = Vertebra::Synapse.new
+			        notifier.condition { @agent.connection_is_open_and_authenticated? }
+
+							notifier.callback do
+								result_iqs.each do |iq|
+									@final_countdown += 1
+									@agent.send_iq(iq)
+								end
+							end
+							@agent.enqueue_synapse(notifier)
+						end
+						
+						@agent.enqueue_synapse(bucket_handler)
+					else
+	          notifier.callback do
+	            @agent.send_iq(result_iq)
+	          end
+	          @agent.enqueue_synapse(notifier)
+	        end
         end
         @agent.enqueue_synapse(dispatcher)
       end
 
       def process_data_result(iq)
-        @state = :flush
-        final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-        final_iq.root_node.set_attribute('type', 'set')
-        final_iq.node.raw_mode = true
-        final_tag = ::Vertebra::Final.new(token)
-        final_iq.node.add_child final_tag
-        logger.debug "  Send Final"
-        @agent.send_iq(final_iq)
-        @agent.deja_vu_map.delete(@iq.node['token'])
+				@final_countdown -= 1
+				
+				if @final_countdown <= 0 && @state != :flush
+	        @state = :flush
+	        final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+	        final_iq.root_node.set_attribute('type', 'set')
+	        final_iq.node.raw_mode = true
+	        final_tag = ::Vertebra::Final.new(token)
+	        final_iq.node.add_child final_tag
+	        logger.debug "  Send Final"
+	        @agent.send_iq(final_iq)
+	        @agent.deja_vu_map.delete(@iq.node['token'])
+	      end
       end
 
       def process_final

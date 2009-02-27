@@ -66,6 +66,7 @@ module Vertebra
         # TODO: The logic that deals with this can be messed up, somehow.  Debug it.
         initiator.condition { @agent.defer_on_busy_jid?(@to) }
         initiator.callback do
+					logger.debug("setting busy jid #{@to}")
           @agent.set_busy_jid(@to,self)
           make_request
         end

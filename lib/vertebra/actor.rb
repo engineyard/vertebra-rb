@@ -107,13 +107,93 @@ module Vertebra
       self.class.op_table.keys
     end
 
-    def handle_op(op_type, args, &yielder)
+    def handle_op(op_type, args)
       resource = Vertebra::Resource.new(op_type.to_s)
       method_names = self.class.lookup_op(resource)
       raise NoMethodError unless method_names
+      
+      # This synapse is responsible for accumulating the results from any of the
+      # actors which are running.
+      gatherer = Vertebra::Synapse.new
+      
+      # Dispatch to each method.  The return results can be either a direct
+      # value, or a synapse.  If it is a synapse, then the synapse will be
+      # checked periodically for results.
+      # The gatherer has results when everyone it is monitoring has results.
+
       r = []
-      method_names.each {|method_name| r << self.send(method_name, args, &yielder)}
-      r
+      
+      method_iterator = Vertebra::Synapse.new
+      
+      case @agent.determine_scope(args)
+      when :single
+        randomized_method_names = method_names.sort_by { rand }
+        method_name = nil
+        method_result = :no_result
+        
+        method_iterator.condition do
+          if !randomized_method_names.empty?
+            method_name = randomized_method_names.pop unless method_name
+          
+            if method_name && method_result == :no_result
+              begin
+                method_result = self.send(method_name, args)
+              rescue Exception => e
+                method_name = nil
+                method_result = :no_result
+              else
+                @agent.enqueue_synapse(method_result) if Vertebra::Synapse === method_result
+                r[0] = method_result
+              end
+            end
+
+            if method_result && method_result != :no_result && (!(Vertebra::Synapse === method_result) || (Vertebra::Synapse === method_result && method_result.has_key?(:results)))
+              :succeeded
+            elsif method_result && method_result != :no_result && Vertebra::Synapse == method_result && method_result.has_key?(:error)
+              method_name = nil
+              method_result = :no_result
+              r.delete(0)
+              :deferred
+            else
+              :deferred
+            end
+          else
+            r = []
+            :succeeded
+          end
+        end
+      else
+        method_iterator.condition do
+          method_names.each do |method_name|
+            method_result = self.send(method_name, args)
+            r << method_result
+            @agent.enqueue_synapse(method_result) if Vertebra::Synapse === method_result
+          end
+          :succeeded
+        end
+      end
+      
+      method_iterator.callback do
+        gatherer.condition do
+          r.all? do |res|
+            if Vertebra::Synapse === res
+              res.has_key?(:results)
+            else
+              true
+            end
+          end ? :succeeded : :deferred
+        end
+        
+        gatherer.callback do
+          gatherer[:results] = r.collect {|res| Vertebra::Synapse === res ? res[:results] : res }
+        end
+        
+        @agent.enqueue_synapse(gatherer)
+      end
+      
+      @agent.enqueue_synapse(method_iterator)
+      
+      gatherer
     end
 
     # Specify the resources that the actor provides.  The interface is additive.  That is,

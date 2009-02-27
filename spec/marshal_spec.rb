@@ -46,7 +46,11 @@ TYPES = ['string', 'nil', 'res', 'i4', 'boolean', 'base64', 'double', 'dateTime.
 # p e = Vertebra::Marshal.decode( xml)
 # p e.size
 
-describe 'Unmarshaller decode' do
+describe Vertebra::Marshal do
+  it 'encodes a simple string' do
+    r = Vertebra::Marshal.encode("abc")
+    puts r
+  end
 
   it 'return an empty hash when given a top-level element without a name attribute' do
     Vertebra::Marshal.decode(REXML::Document.new("<struct><i4>2</i4></struct>")).should == {}

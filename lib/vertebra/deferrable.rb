@@ -70,6 +70,10 @@ module Vertebra
       r
     end
 
+    def set_deferred_status=(status)
+      set_deferred_status(status)
+    end
+
     def timeout= seconds
       cancel_timeout
       me = self

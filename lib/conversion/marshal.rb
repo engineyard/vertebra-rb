@@ -16,6 +16,11 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'rexml/element'
+require 'date'
+require 'conversion/datetime'
+require 'conversion/base64'
+require 'vertebra/resource'
+require 'vertebra/xmppelement'
 
 # Vertebra::Marshal encapsulates the conversion of a variety of different class
 # types into XML elements which can be sent as part of an XMPP exchange.

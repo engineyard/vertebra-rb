@@ -95,23 +95,35 @@ module Vertebra
       raw_element = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(raw_element)
       actors = candidates(args, op['type'])
-      logger.debug "got actors: #{actors}"
-      results_yielded = false
-      yielder = Proc.new {|res| yield({:response => res}, false) }
-      actors.each_with_index do |actor, index|
-        # force response into a hash
-        begin
-          res = actor.handle_op(op.attributes['type'], args, &yielder)
-        rescue NoMethodError
-          # This actor should not be dispatched to for this operation
-          next
-        end
-        logger.debug "RESPONSE #{res.inspect}"
-        unless (Hash === res && res.key?(:response))
-          res = { :response => res }
-        end
-        yield(res)
+      
+      # Dispatched ops is an array of synapses which are each gathering the
+      # results from the method dispatches they are responsible for.
+      dispatched_ops = []
+      
+      actors.each do |actor|
+        dispatched_ops << actor.handle_op(op.attributes['type'], args)
       end
+      
+      ops_bucket = Vertebra::Synapse.new
+      logger.debug "Ops Bucket: #{dispatched_ops.inspect}"
+      
+      ops_bucket.condition do
+        dispatched_ops.all? do |gatherer|
+          gatherer.has_key?(:results)
+        end ? :succeeded : :deferred
+      end
+
+      ops_bucket.callback do
+        ops_bucket[:results] = []
+        dispatched_ops.each do |gatherer|
+          res = gatherer[:results]
+          logger.debug "RESPONSE #{res.inspect}"
+          res.each {|r| ops_bucket[:results] << r }
+        end
+      end
+      
+      @agent.enqueue_synapse(ops_bucket)
+      ops_bucket
     end
   end
 end

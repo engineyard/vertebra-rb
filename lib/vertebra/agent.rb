@@ -29,7 +29,7 @@ end
 module Vertebra
   class Agent
 
-    SLOW_TIMER_FREQUENCY = 100
+    SLOW_TIMER_FREQUENCY = 200
     FAST_TIMER_FREQUENCY = 15
     
     include Vertebra::Daemon
@@ -305,16 +305,9 @@ module Vertebra
       # will be removed from the list before issuing the request.  If a
       # scope is not given, :all is the assumed scope.
 
-      case raw_args.first
-      when :single
-        scope = :single
-        raw_args.shift
-      when :all
-        scope = :all
-        raw_args.shift
-      else
-        scope = :all
-      end
+      raw_args = [normalize_args_for_scope(*raw_args)]
+
+      scope = determine_scope(*raw_args)
 
       resources = raw_args.select {|r| Vertebra::Resource === r}
       cooked_args = []
@@ -357,6 +350,27 @@ module Vertebra
       enqueue_synapse(discoverer)
 
       discoverer
+    end
+
+    def normalize_args_for_scope(*args)
+      new_arg_hash = {}
+      if [:any, :single].include? args.first
+        new_arg_hash["__scope__"] = args.first.to_s
+      end
+      args.each do |arg|
+        new_arg_hash.merge!(arg) if Hash === arg
+      end
+      new_arg_hash
+    end
+
+    def determine_scope(*args)
+      args.each do |arg|
+        logger.debug "ARRRRGGGGG #{arg.inspect}"
+        if arg.respond_to?(:has_key?) && arg.has_key?('__scope__')
+          return arg['__scope__'].to_s.intern
+        end
+      end
+      :all
     end
 
     def send_iq(iq)

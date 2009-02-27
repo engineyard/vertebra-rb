@@ -18,6 +18,7 @@
 require File.dirname(__FILE__) + "/../../../lib/vertebra/actor"
 require 'rubygems'
 require 'thor'
+require 'vertebra/actor_synapse'
 
 module MockActor
   class Actor < Vertebra::Actor
@@ -49,6 +50,46 @@ module MockActor
         n == 0 ? acc : redo
       end.call('',size)
     end
+
+    bind_op "/list/deferredslow", :list_deferred_slow
+    desc "/list/deferredslow", "Get a list of letters and numbers, slowly, without blocking the reactor"
+    def list_deferred_slow(options = {})
+      bit = Vertebra::ActorSynapse.new(@agent)
+
+      size = options['size'].to_i
+      size = 32 if size == 0
+      start = Time.now
+
+      acc = ''
+      bit.action do |synapse|
+        if Time.now > (start + 1)
+          start = Time.now
+          acc << 'abcdef0123456789'[rand(16)].chr
+          size -= 1
+        end
+        size == 0 ? acc : synapse
+      end
+
+      bit
+    end
+
+    bind_op "/list/deferredfast", :list_deferred_fast
+    desc "/list/deferredfast", "Get a list of letters and numbers, quickly, a letter at a time, without blocking the reactor"
+    def list_deferred_fast(options = {})
+      bit = Vertebra::ActorSynapse.new(@agent)
+
+      size = options['size'].to_i
+      size = 32 if size == 0
+
+      acc = ''
+      bit.action do |synapse|
+        acc << 'abcdef0123456789'[rand(16)].chr
+        size -= 1
+        size == 0 ? acc : synapse
+      end
+
+      bit
+    end
     
     bind_op "/list/letters", :list_letters2
     desc "/list/letters", "Get a list of letters; the list will be a given size, defaulting to 26, but alterable with a size option"
@@ -62,7 +103,7 @@ module MockActor
         n == 0 ? acc : redo
       end.call('',size)
     end
-    
+
   end
 end
 
