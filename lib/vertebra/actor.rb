@@ -107,6 +107,10 @@ module Vertebra
       self.class.op_table.keys
     end
 
+    # TODO: This method needs to be refactored.  Nay, it begs to be refactored.
+    # Also, there are probably some error handling cases that need better
+    # testing.
+    
     def handle_op(op_type, args)
       resource = Vertebra::Resource.new(op_type.to_s)
       method_names = self.class.lookup_op(resource)

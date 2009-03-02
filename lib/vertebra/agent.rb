@@ -365,7 +365,6 @@ module Vertebra
 
     def determine_scope(*args)
       args.each do |arg|
-        logger.debug "ARRRRGGGGG #{arg.inspect}"
         if arg.respond_to?(:has_key?) && arg.has_key?('__scope__')
           return arg['__scope__'].to_s.intern
         end
