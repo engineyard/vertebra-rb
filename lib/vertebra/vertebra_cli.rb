@@ -203,7 +203,7 @@ EHELP
           else
             puts "Making request for #{@op} #{@scope} #{@parsed_args.inspect}" if @verbose
             request = agent.request(@op,@scope,*@parsed_args)
-            @check_timer = EM::Timer.new(50 / 1000) do
+            @check_timer = EM::PeriodicTimer.new(50 / 1000) do
               if request[:results]
                 agent.stop
                 show_results(request[:results])
