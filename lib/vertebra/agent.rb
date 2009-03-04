@@ -106,7 +106,7 @@ module Vertebra
     end
 
     def install_periodic_actions
-      @fast_synapse_timer = EM::Timer.new(FAST_TIMER_FREQUENCY / 1000) { synapse_timer_block }
+      @fast_synapse_timer = EM::PeriodicTimer.new(FAST_TIMER_FREQUENCY / 1000) { synapse_timer_block }
       EM.add_periodic_timer(1) { clear_busy_jids }
       EM.add_periodic_timer(2) { monitor_connection_status }
       EM.add_periodic_timer(8) { GC.start }
