@@ -114,7 +114,7 @@ module Vertebra
         resender.callback do
           @agent.send_iq(@last_message_sent)
         end
-        GLib::Timeout.add((Math.log(delay + 0.1) * 1000).to_i) { @agent.enqueue_synapse(resender); false}
+        EM.add_timer((Math.log(delay + 0.1)).to_i) { @agent.enqueue_synapse(resender) }
       end
 
       def process_ack_or_nack(iq, stanza_type, stanza)

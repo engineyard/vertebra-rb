@@ -32,7 +32,7 @@ require 'vertebra/jid'
 
 require 'loudmouth'
 require 'vertebra/loudmouth_extension'
-require 'glib2'
+require 'eventmachine'
 require 'vertebra/protocol/op'
 require 'vertebra/protocol/client'
 require 'vertebra/protocol/server'

@@ -26,6 +26,13 @@ rescue LoadError
   logger.debug "Install the growl gem for growl support. Growl notifications disabled."
 end
 
+module LmDispatcher
+  def notify_readable
+    notification = LM::Sink.notification
+    notification.target.call(notification.data) if notification.target
+  end
+end
+
 module Vertebra
   class Agent
 
@@ -43,8 +50,6 @@ module Vertebra
     def initialize(jid, password, opts = {})
       Vertebra.config = @opts = opts
       
-      @timer_speed = :fast
-
       raise(ArgumentError, "Please provide at least a Jabber ID and password") if !jid || !password
 
       Vertebra::Daemon.setup_pidfile unless @opts[:background]
@@ -72,12 +77,10 @@ module Vertebra
       @herault_jid = opts[:herault_jid] || 'herault@localhost/herault'
       @ttl = opts[:ttl] || 3600 # Default TTL for advertised resources is 3600 seconds.
 
-      @main_loop = GLib::MainLoop.new(nil,nil)
-      @conn = LM::Connection.new
+      @conn = LM::EventedConnection.new
       @conn.jid = @jid.to_s
 
       install_signal_handlers
-      install_periodic_actions
 
       # TODO: Add options for these intervals, instead of a hardcoded timing?
 
@@ -93,7 +96,7 @@ module Vertebra
     end
 
     def stop
-      @main_loop.quit
+      EM.stop
     end
 
     def install_signal_handlers
@@ -103,27 +106,26 @@ module Vertebra
     end
 
     def install_periodic_actions
-      GLib::Timeout.add(FAST_TIMER_FREQUENCY) { synapse_timer_block }
-      GLib::Timeout.add(1000) { clear_busy_jids; true }
-      GLib::Timeout.add(2000) { monitor_connection_status; true }
-      GLib::Timeout.add(8000) { GC.start; true}
-      GLib::Timeout.add(1) { connect; false } # Try to connect immediately after startup.
-      GLib::Timeout.add(1000) { advertise_resources; false } # run once, a second after startup.
+      @fast_synapse_timer = EM::Timer.new(FAST_TIMER_FREQUENCY / 1000) { synapse_timer_block }
+      EM.add_periodic_timer(1) { clear_busy_jids }
+      EM.add_periodic_timer(2) { monitor_connection_status }
+      EM.add_periodic_timer(8) { GC.start }
+      EM.add_timer(1 / 1000) { connect } # Try to connect immediately after startup.
+      EM.add_timer(1) { advertise_resources } # run once, a second after startup.
     end
 
     def synapse_timer_block
       queue_size = @synapse_queue.size
       fire_synapses
-            
-      if @timer_speed == :fast && queue_size == 0
-        @timer_speed = :slow
-        GLib::Timeout.add(SLOW_TIMER_FREQUENCY) {synapse_timer_block}
-        false
-      elsif @timer_speed == :slow && queue_size > 0
-        @timer_speed = :fast
-        GLib::Timeout.add(FAST_TIMER_FREQUENCY) {synapse_timer_block}
-      else
-        true
+
+      if @fast_synapse_timer && queue_size == 0
+        @fast_synapse_timer.cancel
+        @fast_synapse_timer = nil
+        @slow_synapse_timer = EM::PeriodicTimer.new(SLOW_TIMER_FREQUENCY / 1000) { synapse_timer_block }
+      elsif @slow_synapse_timer && queue_size > 0
+        @slow_synapse_timer.cancel
+        @slow_synapse_timer = nil
+        @fast_synapse_timer = EM::PeriodicTimer.new(FAST_TIMER_FREQUENCY / 1000) { synapse_timer_block }
       end
     end
 
@@ -166,7 +168,6 @@ module Vertebra
           @connection_in_progress = true
           logger.debug "opening connection"
           success = @conn.open {} # TODO: Loudmouth-Ruby should be fixed so this empty block isn't necessary
-
           if success
             offer_authentication
           else
@@ -275,7 +276,10 @@ module Vertebra
         logger.info "Starting DRb on port #{@drb_port}" if @opts[:use_drb]
       end
 
-      @main_loop.run
+      EM.run do
+        install_periodic_actions
+        EM.attach(LM::Sink.file_descriptor, LmDispatcher)
+      end
     end
 
     def direct_op(op_type, to, *args)
@@ -771,7 +775,7 @@ module Vertebra
       unless provided_resources.empty?
         advertise_op(provided_resources)
         unless @advertise_timer_started
-          GLib::Timeout.add_seconds(@ttl * 0.9) {advertise_op(provided_resources,@ttl)}
+          EM.add_periodic_timer(@ttl * 0.9) {advertise_op(provided_resources,@ttl)}
           @advertise_timer_started = true
         end
       end

@@ -186,34 +186,31 @@ EHELP
       puts "Initializing agent with #{@jid}/#{@password}" if @verbose
       agent = Vertebra::Agent.new(@jid, @password, @opts)
 
-      GLib::Timeout.add(10) do
+      EM.add_timer(10 / 1000) do
         if @discovery_only
           puts "Doing discovery #{[@op,@parsed_args].flatten.inspect}" if @verbose
           resources = @parsed_args.select {|r| Vertebra::Resource == r}
           @client = agent.discover(@op,*resources)
-          GLib::Timeout.add(50) do
+          @check_timer = EM::Timer.new(50 / 1000) do
             if @client.done?
               show_results(@client.results)
               agent.stop
-              false
-            else
-              true
+              @check_timer.cancel
+              @check_timer = nil
             end
           end
         else
           puts "Making request for #{@op} #{@scope} #{@parsed_args.inspect}" if @verbose
           request = agent.request(@op,@scope,*@parsed_args)
-          GLib::Timeout.add(50) do
+          @check_timer = EM::Timer.new(50 / 1000) do
             if request[:results]
               agent.stop
               show_results(request[:results])
-              false
-            else
-              true
+              @check_timer.cancel
+              @check_timer = nil
             end
-          end # GLib::Timeout
+          end
         end
-        false
       end
 
       agent.start
