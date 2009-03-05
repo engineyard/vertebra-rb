@@ -308,9 +308,6 @@ module Vertebra
       # passed via a symbol as the first arg -- :single or :all.  That arg
       # will be removed from the list before issuing the request.  If a
       # scope is not given, :all is the assumed scope.
-
-      raw_args = [normalize_args_for_scope(*raw_args)]
-
       scope = determine_scope(*raw_args)
 
       resources = raw_args.select {|r| Vertebra::Resource === r}
@@ -356,24 +353,13 @@ module Vertebra
       discoverer
     end
 
-    def normalize_args_for_scope(*args)
-      new_arg_hash = {}
-      if [:any, :single].include? args.first
-        new_arg_hash["__scope__"] = args.first.to_s
-      end
-      args.each do |arg|
-        new_arg_hash.merge!(arg) if Hash === arg
-      end
-      new_arg_hash
-    end
-
     def determine_scope(*args)
-      args.each do |arg|
-        if arg.respond_to?(:has_key?) && arg.has_key?('__scope__')
-          return arg['__scope__'].to_s.intern
-        end
+      res = :all
+      if [:any, :single].include? args.first
+        res = args.first
+        args.delete_at(0)
       end
-      :all
+      res
     end
 
     def send_iq(iq)
@@ -422,7 +408,6 @@ module Vertebra
       gatherer.callback do
         results = []
         ops.each { |jid, client| results << client.results unless client.results.empty? }
-
         discoverer[:results] = results
       end
       enqueue_synapse(gatherer)
