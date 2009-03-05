@@ -186,28 +186,30 @@ EHELP
       puts "Initializing agent with #{@jid}/#{@password}" if @verbose
       agent = Vertebra::Agent.new(@jid, @password, @opts)
 
-      EM.add_timer(10 / 1000) do
-        if @discovery_only
-          puts "Doing discovery #{[@op,@parsed_args].flatten.inspect}" if @verbose
-          resources = @parsed_args.select {|r| Vertebra::Resource == r}
-          @client = agent.discover(@op,*resources)
-          @check_timer = EM::Timer.new(50 / 1000) do
-            if @client.done?
-              show_results(@client.results)
-              agent.stop
-              @check_timer.cancel
-              @check_timer = nil
+      EM.next_tick do
+        EM.add_timer(10 / 1000) do
+          if @discovery_only
+            puts "Doing discovery #{[@op,@parsed_args].flatten.inspect}" if @verbose
+            resources = @parsed_args.select {|r| Vertebra::Resource == r}
+            @client = agent.discover(@op,*resources)
+            @check_timer = EM::Timer.new(50 / 1000) do
+              if @client.done?
+                show_results(@client.results)
+                agent.stop
+                @check_timer.cancel
+                @check_timer = nil
+              end
             end
-          end
-        else
-          puts "Making request for #{@op} #{@scope} #{@parsed_args.inspect}" if @verbose
-          request = agent.request(@op,@scope,*@parsed_args)
-          @check_timer = EM::Timer.new(50 / 1000) do
-            if request[:results]
-              agent.stop
-              show_results(request[:results])
-              @check_timer.cancel
-              @check_timer = nil
+          else
+            puts "Making request for #{@op} #{@scope} #{@parsed_args.inspect}" if @verbose
+            request = agent.request(@op,@scope,*@parsed_args)
+            @check_timer = EM::PeriodicTimer.new(50 / 1000) do
+              if request[:results]
+                agent.stop
+                show_results(request[:results])
+                @check_timer.cancel
+                @check_timer = nil
+              end
             end
           end
         end

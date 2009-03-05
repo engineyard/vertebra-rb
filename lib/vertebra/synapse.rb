@@ -18,11 +18,13 @@
 # This file is a reimplementation of xmpp4r's rexmladdons. As such, it depends
 # on some parts of REXML.
 
+require 'vertebra/deferrable' 
+
 module Vertebra
   class SetCallbackFailed < Exception; end
 
   class Synapse
-    include EventMachine::Deferrable
+    include Vertebra::Deferrable
 
     def [](key)
       (@_data ||= {})[key]
@@ -52,10 +54,10 @@ module Vertebra
       (@conditions ||= []) && @conditions
     end
 
-    alias :timeout= :timeout
-    def timeout
-      @deferred_timeout
-    end
+    #alias :timeout= :timeout
+    #def timeout
+    #  @deferred_timeout
+    #end
 
     def deferred_status?(*args)
       r = :unk
