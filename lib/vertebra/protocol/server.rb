@@ -219,6 +219,8 @@ module Vertebra
 									@final_countdown += 1
 									@agent.send_iq(iq)
 								end
+                # If there are no results then force sending the 'final' stanza
+                process_data_result if result_iqs.empty?
 							end
 							@agent.enqueue_synapse(notifier)
 						end
@@ -234,7 +236,7 @@ module Vertebra
         @agent.enqueue_synapse(dispatcher)
       end
 
-      def process_data_result(iq)
+      def process_data_result(iq = nil)
 				@final_countdown -= 1
 				
 				if @final_countdown <= 0 && @state != :flush
