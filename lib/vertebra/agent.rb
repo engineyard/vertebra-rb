@@ -238,7 +238,7 @@ module Vertebra
           raise "Busy JID Client mismatch for #{jid.inspect}, offending client is #{client.inspect}"
         end
       else
-        raise "Busy JID Client not found for #{jid.inspect}, offending client is #{client.inspect}"
+        # raise "Busy JID Client not found for #{jid.inspect}, offending client is #{client.inspect}"
       end
     end
 
