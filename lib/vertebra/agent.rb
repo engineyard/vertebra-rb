@@ -17,6 +17,7 @@
 
 require 'vertebra/dispatcher'
 require 'vertebra/actor'
+require 'vertebra/sous_chef'
 require 'vertebra/synapse'
 require 'vertebra/synapse_queue'
 
@@ -309,44 +310,29 @@ module Vertebra
       # will be removed from the list before issuing the request.  If a
       # scope is not given, :all is the assumed scope.
 
-      raw_args = [normalize_args_for_scope(*raw_args)]
-
-      scope = determine_scope(*raw_args)
-
-      resources = raw_args.select {|r| Vertebra::Resource === r}
-      cooked_args = []
-      specific_jids = []
-      raw_args.each do |arg|
-        next if Vertebra::Resource === arg
-
-        if arg =~ /^jid:(.*)/
-          specific_jids << $1
-        else
-          cooked_args << arg
-        end
-      end
+      entree = SousChef.prepare(raw_args)
 
       discoverer = Vertebra::Synapse.new
       discoverer.callback do
         requestor = Vertebra::Synapse.new
-        discoverer[:client] = discover(op_type,*resources)
+        discoverer[:client] = discover(op_type, *entree.resources)
         requestor.condition do
           discoverer[:client].done? ? :succeeded : :deferred
         end
         requestor.callback do
           jids = discoverer[:client].results
           if Array === jids
-            target_jids = jids.concat(specific_jids)
+            target_jids = jids.concat(entree.jids)
           else
-            target_jids = jids['jids'].concat(specific_jids)
+            target_jids = jids['jids'].concat(entree.jids)
           end
 
           if jids.empty?
             discoverer[:results] = []
           elsif scope == :all
-            gather(discoverer, target_jids, op_type, *cooked_args)
+            gather(discoverer, target_jids, op_type, entree.args)
           else
-            gather_one(discoverer, target_jids.sort_by { rand }, op_type, *cooked_args)
+            gather_one(discoverer, target_jids.sort_by { rand }, op_type, entree.args)
           end
         end
         enqueue_synapse(requestor)
