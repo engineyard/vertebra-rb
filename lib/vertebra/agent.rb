@@ -333,7 +333,7 @@ module Vertebra
 
           if jids.empty?
             discoverer[:results] = []
-          elsif scope == :all
+          elsif entree.scope == :all
             gather(discoverer, target_jids, op_type, entree.args)
           else
             gather_one(discoverer, target_jids.sort_by { rand }, op_type, entree.args)
