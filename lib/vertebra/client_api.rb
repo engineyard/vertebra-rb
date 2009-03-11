@@ -59,10 +59,7 @@ module Vertebra
     end
 
     def advertise_op(resources, ttl = @handle.ttl)
-      client = @handle.direct_op('/security/advertise',
-        @handle.herault_jid,
-        :resources => resources,
-        :ttl => ttl)
+      client = @handle.advertise_op(resources,ttl)
 
       while !(z = client.done?)
         sleep 0.05

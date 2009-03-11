@@ -36,8 +36,8 @@ end
 module Vertebra
   class Agent
 
-    SLOW_TIMER_FREQUENCY = 200
-    FAST_TIMER_FREQUENCY = 15
+    SLOW_TIMER_FREQUENCY = 200.0
+    FAST_TIMER_FREQUENCY = 15.0
     
     include Vertebra::Daemon
 
@@ -91,6 +91,8 @@ module Vertebra
 
       @clients, @servers = {},{}
 
+      @show_synapses = false
+
       # register actors specified in the config
       @dispatcher.register(opts[:actors]) if opts[:actors]
     end
@@ -102,7 +104,7 @@ module Vertebra
     def install_signal_handlers
       trap('SIGINT') {stop}
       trap('SIGTERM') {stop}
-      trap('SIGUSR1') {GC.start; File.open('/tmp/objdump','w+') {|fh| GC.start; ObjectSpace.each_object {|o| fh.puts "#{o} -- #{o.inspect}"}}; GC.start}
+      trap('SIGUSR1') {GC.start; @show_synapses = !@show_synapses}
     end
 
     def install_periodic_actions
@@ -110,7 +112,7 @@ module Vertebra
       EM.add_periodic_timer(1) { clear_busy_jids }
       EM.add_periodic_timer(2) { monitor_connection_status }
       EM.add_periodic_timer(8) { GC.start }
-      EM.add_timer(1 / 1000) { connect } # Try to connect immediately after startup.
+      EM.add_timer(1.0 / 1000) { connect } # Try to connect immediately after startup.
       EM.add_timer(1) { advertise_resources } # run once, a second after startup.
     end
 
@@ -146,7 +148,8 @@ module Vertebra
     end
 
     def fire_synapses
-      @synapse_queue.fire
+      logger.debug "QUEUE: #{@synapse_queue.length}" if @show_synapses
+      @synapse_queue.fire(@show_synapses)
     end
 
     def monitor_connection_status
@@ -195,7 +198,7 @@ module Vertebra
         @connection_in_progress = false
         unless @conn.authenticated?
           logger.debug "authenticating"
-          success = @conn.authenticate(@jid.node, @password, "agent") {}
+          success = @conn.authenticate(@jid.node, @password, @jid.resource) {}
           if success
             finalize_authentication
           else
@@ -378,6 +381,8 @@ module Vertebra
 
     def send_iq(iq)
       @conn.send(iq)
+    rescue Exception => e
+      logger.debug "KABOOM!  #{e}"  
     end
 
     def send_packet(to,typ,packet_id,packet) # This exists only for debugging purposes.
@@ -763,7 +768,6 @@ module Vertebra
     def advertise_op(resources, ttl = @ttl)
       logger.debug "ADVERTISING: #{resources.inspect}"
       direct_op('/security/advertise', @herault_jid, :resources => resources, :ttl => ttl)
-      logger.debug "  DONE ADVERTISING"
     end
 
     def unadvertise_op(resources)
