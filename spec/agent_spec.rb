@@ -17,6 +17,7 @@
 
 require File.dirname(__FILE__) + '/spec_helper'
 require 'vertebra'
+require 'vertebra/agent'
 
 describe "An instance of Vertebra::Agent" do
 
@@ -25,5 +26,16 @@ describe "An instance of Vertebra::Agent" do
     @password = 'test'
   end
 
+  it "instantiates an instance of Agent" do
+    agent = Vertebra::Agent.new(@jid, @password)
+  end
+
+  it "populates jid as expected" do
+    agent = Vertebra::Agent.new(@jid, @password)
+    agent.jid.to_s.should == 'test@example.com/agent'
+
+    agent = Vertebra::Agent.new("#{@jid}/secretagent", @password)
+    agent.jid.to_s.should == 'test@example.com/secretagent'
+  end
 
 end
