@@ -23,10 +23,6 @@ describe Vertebra::SousChef do
     Vertebra::SousChef.prepare(*args)
   end
 
-  def expect_error(*args, &block)
-    block.should raise_error(*args)
-  end
-
   it 'should set some defaults' do
     entree = prepare
     entree.args.should == {}
