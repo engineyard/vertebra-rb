@@ -17,6 +17,7 @@
 
 require 'vertebra/dispatcher'
 require 'vertebra/actor'
+require 'vertebra/sous_chef'
 require 'vertebra/synapse'
 require 'vertebra/synapse_queue'
 
@@ -286,7 +287,7 @@ module Vertebra
     end
 
     def direct_op(op_type, to, *args)
-      op = Vertebra::Op.new(op_type, *args)
+      op = Vertebra::Op.new(op_type, args)
       logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
       Vertebra::Protocol::Client.start(self, op, to)
     end
@@ -312,44 +313,29 @@ module Vertebra
       # will be removed from the list before issuing the request.  If a
       # scope is not given, :all is the assumed scope.
 
-      raw_args = [normalize_args_for_scope(*raw_args)]
-
-      scope = determine_scope(*raw_args)
-
-      resources = raw_args.select {|r| Vertebra::Resource === r}
-      cooked_args = []
-      specific_jids = []
-      raw_args.each do |arg|
-        next if Vertebra::Resource === arg
-
-        if arg =~ /^jid:(.*)/
-          specific_jids << $1
-        else
-          cooked_args << arg
-        end
-      end
+      entree = SousChef.prepare(raw_args)
 
       discoverer = Vertebra::Synapse.new
       discoverer.callback do
         requestor = Vertebra::Synapse.new
-        discoverer[:client] = discover(op_type,*resources)
+        discoverer[:client] = discover(op_type, *entree.resources)
         requestor.condition do
           discoverer[:client].done? ? :succeeded : :deferred
         end
         requestor.callback do
           jids = discoverer[:client].results
           if Array === jids
-            target_jids = jids.concat(specific_jids)
+            target_jids = jids.concat(entree.jids)
           else
-            target_jids = jids['jids'].concat(specific_jids)
+            target_jids = jids['jids'].concat(entree.jids)
           end
 
           if jids.empty?
             discoverer[:results] = []
           elsif scope == :all
-            gather(discoverer, target_jids, op_type, *cooked_args)
+            gather(discoverer, target_jids, op_type, entree.args)
           else
-            gather_one(discoverer, target_jids.sort_by { rand }, op_type, *cooked_args)
+            gather_one(discoverer, target_jids.sort_by { rand }, op_type, entree.args)
           end
         end
         enqueue_synapse(requestor)
@@ -357,26 +343,6 @@ module Vertebra
       enqueue_synapse(discoverer)
 
       discoverer
-    end
-
-    def normalize_args_for_scope(*args)
-      new_arg_hash = {}
-      if [:any, :single].include? args.first
-        new_arg_hash["__scope__"] = args.first.to_s
-      end
-      args.each do |arg|
-        new_arg_hash.merge!(arg) if Hash === arg
-      end
-      new_arg_hash
-    end
-
-    def determine_scope(*args)
-      args.each do |arg|
-        if arg.respond_to?(:has_key?) && arg.has_key?('__scope__')
-          return arg['__scope__'].to_s.intern
-        end
-      end
-      :all
     end
 
     def send_iq(iq)
@@ -406,17 +372,17 @@ module Vertebra
 
     # This method queue an op for each jid, and returns a hash containing the
     # client protocol object for each.
-    def scatter(jids, op_type, *args)
+    def scatter(jids, op_type, args)
       ops = {}
       jids.each do |jid|
         logger.debug "scatter# #{op_type} | #{jid} | #{args.inspect}"
-        ops[jid] = direct_op(op_type, jid, *args)
+        ops[jid] = direct_op(op_type, jid, args)
       end
       ops
     end
 
-    def gather(discoverer, jids, op_type, *args)
-      ops = scatter(jids, op_type, *args)
+    def gather(discoverer, jids, op_type, args)
+      ops = scatter(jids, op_type, args)
 
       gatherer = Vertebra::Synapse.new
       gatherer.condition do
@@ -433,10 +399,10 @@ module Vertebra
       enqueue_synapse(gatherer)
     end
 
-    def gather_one(discoverer, jids, op_type, *args)
+    def gather_one(discoverer, jids, op_type, args)
       nexter = Vertebra::Synapse.new
       jid = jids.shift
-      op = direct_op(op_type, jid, *args)
+      op = direct_op(op_type, jid, args)
       nexter.condition do
         op.done? ? :succeeded : :deferred
       end
@@ -448,7 +414,7 @@ module Vertebra
           # The client is done, but it is not in :commit state, so it failed.
           # If there are other jids to try, do so.
           if jids.length > 0
-            gather_one(discoverer, jids, op_type, *args)
+            gather_one(discoverer, jids, op_type, args)
           else
             # There were no other jids to try, so we're out of targets, and have
             # no results; this returns an error.

@@ -22,43 +22,6 @@ require 'vertebra/synapse_queue'
 
 # Specs to test the protocol portion of Vertebra.
 
-describe Vertebra::Op do
-
-  it 'should allow initialization with an array' do
-    op = Vertebra::Op.new('/testop',"/test/test")
-    op.should be_kind_of(Vertebra::Op)
-    op.instance_variable_get('@op_type').should be_kind_of(Vertebra::Resource)
-    op.instance_variable_get('@op_type').to_s.should == '/testop'
-    op.instance_variable_get('@args')['/test/test'].should be_kind_of(Vertebra::Resource)
-    op.instance_variable_get('@args')['/test/test'].to_s.should == '/test/test'
-  end
-
-  it 'should allow initialization with a hash' do
-    op = Vertebra::Op.new('/testop',{'from' => '/george', 'to' => '/man/in/yellow/hat'})
-    op.should be_kind_of(Vertebra::Op)
-    op.instance_variable_get('@op_type').should be_kind_of(Vertebra::Resource)
-    op.instance_variable_get('@op_type').to_s.should == '/testop'
-    op.instance_variable_get('@args')['from'].should == '/george'
-    op.instance_variable_get('@args')['to'].should == '/man/in/yellow/hat'
-  end
-
-  it 'should allow initialization with an array and a hash' do
-    op = Vertebra::Op.new('/testop',"/test/test",{'from' => '/george', 'to' => '/man/in/yellow/hat'})
-    op.should be_kind_of(Vertebra::Op)
-    op.instance_variable_get('@op_type').should be_kind_of(Vertebra::Resource)
-    op.instance_variable_get('@op_type').to_s.should == '/testop'
-    op.instance_variable_get('@args')['/test/test'].should be_kind_of(Vertebra::Resource)
-    op.instance_variable_get('@args')['/test/test'].to_s.should == '/test/test'
-    op.instance_variable_get('@op_type').should be_kind_of(Vertebra::Resource)
-    op.instance_variable_get('@op_type').to_s.should == '/testop'
-    op.instance_variable_get('@args')['from'].should == '/george'
-    op.instance_variable_get('@args')['to'].should == '/man/in/yellow/hat'
-  end
-
-  # todo: write a decent test of #to_iq
-
-end
-
 class Mock
   attr_accessor :deja_vu_map
 
@@ -93,7 +56,7 @@ describe Vertebra::Protocol::Client do
       mock.def(:parse_token) {|node| }
     end
 
-    @op = Vertebra::Op.new("/foo")
+    @op = Vertebra::Op.new("/foo", {})
     @to = "to@localhost"
     @client = Vertebra::Protocol::Client.start(@agent, @op, @to)
   end
@@ -212,5 +175,4 @@ describe Vertebra::Protocol::Client do
 end
 
 describe Vertebra::Protocol::Server do
-
 end
