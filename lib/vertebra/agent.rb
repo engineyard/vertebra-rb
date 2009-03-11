@@ -287,7 +287,7 @@ module Vertebra
     end
 
     def direct_op(op_type, to, *args)
-      entree = SousChef.prepare(args)
+      entree = SousChef.prepare(*args)
       op = Vertebra::Op.new(op_type, entree.args)
       logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
       Vertebra::Protocol::Client.start(self, op, to)
@@ -314,7 +314,7 @@ module Vertebra
       # will be removed from the list before issuing the request.  If a
       # scope is not given, :all is the assumed scope.
 
-      entree = SousChef.prepare(raw_args)
+      entree = SousChef.prepare(*raw_args)
 
       discoverer = Vertebra::Synapse.new
       discoverer.callback do
