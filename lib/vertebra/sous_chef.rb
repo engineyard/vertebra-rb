@@ -54,7 +54,6 @@ module Vertebra
         end
       end
 
-      RESOURCE_REGEXP = /^\/.*/
       PAIR_REGEXP = /^([^=]+)=(.+)/
       JID_REGEXP = /^jid:(.*)/
 
@@ -62,14 +61,15 @@ module Vertebra
         args = {}
         jids = []
         ingredients.each do |item|
-          if Hash === item
+          case item
+          when Hash
             args.merge! item
-          elsif match = RESOURCE_REGEXP.match(item.to_s)
-            args[match[0]] = res(match[0])
-          elsif match = JID_REGEXP.match(item.to_s)
-            jids << match[1]
-          elsif match = PAIR_REGEXP.match(item.to_s)
-            args[match[1]] = match[2]
+          when JID_REGEXP
+            jids << $1
+          when PAIR_REGEXP
+            args[$1] = $2
+          else
+            args[item] = res(item)
           end
         end
         [args, jids]
