@@ -287,7 +287,8 @@ module Vertebra
     end
 
     def direct_op(op_type, to, *args)
-      op = Vertebra::Op.new(op_type, args)
+      entree = SousChef.prepare(args)
+      op = Vertebra::Op.new(op_type, entree.args)
       logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
       Vertebra::Protocol::Client.start(self, op, to)
     end
