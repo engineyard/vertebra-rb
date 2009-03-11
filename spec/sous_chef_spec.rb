@@ -73,4 +73,9 @@ describe Vertebra::SousChef do
     chef.args.should == {}
     chef.jids.should == ["foo@bar/baz"]
   end
+
+  it 'should disallow malformed args' do
+    lambda { prepare("malformed") }.
+      should raise_error(ArgumentError, /start with a \//)
+  end
 end
