@@ -52,7 +52,7 @@ module Vertebra
           logger.debug "Could not require #{actor.to_s}. Please verify that it is installed under that name."
           logger.debug e.message
         end
-        
+
         begin
           actor_name = actor.to_s.constantcase
           actor_class = constant(actor_name)
@@ -76,7 +76,7 @@ module Vertebra
                        map{|_,value| value }
 
       op_resource = Vertebra::Resource.new(op)
-      
+
       @actors.select do |actor|
         self.class.can_provide?(resources, actor.provides)
       end.select do |actor|
@@ -95,18 +95,18 @@ module Vertebra
       raw_element = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(raw_element)
       actors = candidates(args, op['type'])
-      
+
       # Dispatched ops is an array of synapses which are each gathering the
       # results from the method dispatches they are responsible for.
       dispatched_ops = []
-      
+
       actors.each do |actor|
         dispatched_ops << actor.handle_op(op.attributes['type'], args)
       end
-      
+
       ops_bucket = Vertebra::Synapse.new
       logger.debug "Ops Bucket: #{dispatched_ops.inspect}"
-      
+
       ops_bucket.condition do
         dispatched_ops.all? do |gatherer|
           gatherer.has_key?(:results)
@@ -121,7 +121,7 @@ module Vertebra
           res.each {|r| ops_bucket[:results] << r }
         end
       end
-      
+
       @agent.enqueue_synapse(ops_bucket)
       ops_bucket
     end

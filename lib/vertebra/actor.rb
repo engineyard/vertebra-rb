@@ -81,7 +81,7 @@ module Vertebra
       def op_table
         @op_table
       end
-      
+
       def lookup_op(resource)
         @op_table[resource]
       end
@@ -110,35 +110,35 @@ module Vertebra
     # TODO: This method needs to be refactored.  Nay, it begs to be refactored.
     # Also, there are probably some error handling cases that need better
     # testing.
-    
+
     def handle_op(op_type, args)
       resource = Vertebra::Resource.new(op_type.to_s)
       method_names = self.class.lookup_op(resource)
       raise NoMethodError unless method_names
-      
+
       # This synapse is responsible for accumulating the results from any of the
       # actors which are running.
       gatherer = Vertebra::Synapse.new
-      
+
       # Dispatch to each method.  The return results can be either a direct
       # value, or a synapse.  If it is a synapse, then the synapse will be
       # checked periodically for results.
       # The gatherer has results when everyone it is monitoring has results.
 
       r = []
-      
+
       method_iterator = Vertebra::Synapse.new
-      
+
       case @agent.determine_scope(args)
       when :single
         randomized_method_names = method_names.sort_by { rand }
         method_name = nil
         method_result = :no_result
-        
+
         method_iterator.condition do
           if !randomized_method_names.empty?
             method_name = randomized_method_names.pop unless method_name
-          
+
             if method_name && method_result == :no_result
               begin
                 method_result = self.send(method_name, args)
@@ -176,7 +176,7 @@ module Vertebra
           :succeeded
         end
       end
-      
+
       method_iterator.callback do
         gatherer.condition do
           r.all? do |res|
@@ -187,16 +187,16 @@ module Vertebra
             end
           end ? :succeeded : :deferred
         end
-        
+
         gatherer.callback do
           gatherer[:results] = r.collect {|res| Vertebra::Synapse === res ? res[:results] : res }
         end
-        
+
         @agent.enqueue_synapse(gatherer)
       end
-      
+
       @agent.enqueue_synapse(method_iterator)
-      
+
       gatherer
     end
 
