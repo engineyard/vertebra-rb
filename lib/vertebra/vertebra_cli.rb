@@ -187,12 +187,12 @@ EHELP
       agent = Vertebra::Agent.new(@jid, @password, @opts)
 
       EM.next_tick do
-        EM.add_timer(10 / 1000) do
+#        EM.add_timer(10 / 1000) do
           if @discovery_only
             puts "Doing discovery #{[@op,@parsed_args].flatten.inspect}" if @verbose
             resources = @parsed_args.select {|r| Vertebra::Resource == r}
             @client = agent.discover(@op,*resources)
-            @check_timer = EM::Timer.new(50 / 1000) do
+            @check_timer = EM::PeriodicTimer.new(50 / 1000) do
               if @client.done?
                 show_results(@client.results)
                 agent.stop
@@ -212,7 +212,7 @@ EHELP
               end
             end
           end
-        end
+ #       end
       end
 
       agent.start

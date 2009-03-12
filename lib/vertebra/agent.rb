@@ -37,8 +37,8 @@ end
 module Vertebra
   class Agent
 
-    SLOW_TIMER_FREQUENCY = 200.0
-    FAST_TIMER_FREQUENCY = 15.0
+    SLOW_TIMER_FREQUENCY = 50.0
+    FAST_TIMER_FREQUENCY = 5.0
     
     include Vertebra::Daemon
 
@@ -315,6 +315,8 @@ module Vertebra
       # scope is not given, :all is the assumed scope.
 
       entree = SousChef.prepare(*raw_args)
+
+      entree.args['__scope__'] = entree.scope
 
       discoverer = Vertebra::Synapse.new
       discoverer.callback do
@@ -759,6 +761,15 @@ module Vertebra
 
     def self.default_status
       (File.exists?("/proc") ? File.read("/proc/loadavg") : `uptime`.split(":").last).gsub("\n", '')
+    end
+ 
+    def determine_scope(*args)
+      args.each do |arg|
+        if arg.respond_to?(:has_key?) && arg.has_key?('__scope__')
+          return arg['__scope__'].to_s.intern
+        end
+      end
+      :all
     end
 
     private
