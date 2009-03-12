@@ -56,7 +56,7 @@ describe Vertebra::Protocol::Client do
       mock.def(:parse_token) {|node| }
     end
 
-    @op = Vertebra::Op.new("/foo", {})
+    @op = Vertebra::Op.new("/foo", :all, {})
     @to = "to@localhost"
     @client = Vertebra::Protocol::Client.start(@agent, @op, @to)
   end

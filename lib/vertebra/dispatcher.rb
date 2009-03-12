@@ -92,16 +92,18 @@ module Vertebra
     # a <nil> result marked as final.
     def handle(op)
       logger.debug "Disptcher handling #{op}"
-      raw_element = REXML::Document.new(op.to_s).root
-      args = Vertebra::Marshal.decode(raw_element)
+      elt = REXML::Document.new(op.to_s).root
+      args = Vertebra::Marshal.decode(elt)
       actors = candidates(args, op['type'])
+      scope = elt.attributes.key?('scope') ? elt.attributes['scope'].to_sym : :all
+      logger.debug "SCOPE: #{scope.inspect}"
 
       # Dispatched ops is an array of synapses which are each gathering the
       # results from the method dispatches they are responsible for.
       dispatched_ops = []
 
       actors.each do |actor|
-        dispatched_ops << actor.handle_op(op.attributes['type'], args)
+        dispatched_ops << actor.handle_op(op.attributes['type'], scope, args)
       end
 
       ops_bucket = Vertebra::Synapse.new

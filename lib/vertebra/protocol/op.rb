@@ -20,15 +20,16 @@ module Vertebra
 
     attr_accessor :token
 
-    def initialize(op_type, args)
+    def initialize(op_type, scope, args)
       @args = args
+      @scope = scope
       @token = Vertebra.gen_token
       @op_type = Vertebra::Resource.new(op_type.to_s)
     end
 
     def to_iq(to, from, type=LM::MessageSubType::SET)
       iq = LM::Message.new(to, LM::MessageType::IQ,type)
-      op = Vertebra::Operation.new(@op_type, @token)
+      op = Vertebra::Operation.new(@op_type, @scope, @token)
 
       iq.node.set_attribute('xml:lang','en')
       iq.node.add_child op

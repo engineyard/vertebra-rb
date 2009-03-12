@@ -66,8 +66,9 @@ module Vertebra
     name_xmlns 'op', 'http://xmlschema.engineyard.com/agent/api'
     force_xmlns true
 
-    def initialize(type = nil, token = '')
+    def initialize(type = nil, scope = :all, token = '')
       super()
+      add_attribute('scope', scope.to_s)
       add_attribute('type', type.to_s)
       add_attribute('token', token)
     end

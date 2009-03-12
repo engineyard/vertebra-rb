@@ -111,7 +111,7 @@ module Vertebra
     # Also, there are probably some error handling cases that need better
     # testing.
 
-    def handle_op(op_type, args)
+    def handle_op(op_type, scope, args)
       resource = Vertebra::Resource.new(op_type.to_s)
       method_names = self.class.lookup_op(resource)
       raise NoMethodError unless method_names
@@ -129,7 +129,7 @@ module Vertebra
 
       method_iterator = Vertebra::Synapse.new
 
-      case @agent.determine_scope(args)
+      case scope
       when :single
         randomized_method_names = method_names.sort_by { rand }
         method_name = nil

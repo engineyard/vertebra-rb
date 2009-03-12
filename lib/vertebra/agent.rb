@@ -287,8 +287,12 @@ module Vertebra
     end
 
     def direct_op(op_type, to, *args)
-      entree = SousChef.prepare(*args)
-      op = Vertebra::Op.new(op_type, entree.args)
+      entree = if SousChef::Entree === args.last
+                 args.pop
+               else
+                 SousChef.prepare(*args)
+               end
+      op = Vertebra::Op.new(op_type, entree.scope, entree.args)
       logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
       Vertebra::Protocol::Client.start(self, op, to)
     end
@@ -336,9 +340,9 @@ module Vertebra
           if jids.empty?
             discoverer[:results] = []
           elsif entree.scope == :all
-            gather(discoverer, target_jids, op_type, entree.args)
+            gather(discoverer, target_jids, op_type, entree)
           else
-            gather_one(discoverer, target_jids.sort_by { rand }, op_type, entree.args)
+            gather_one(discoverer, target_jids.sort_by { rand }, op_type, entree)
           end
         end
         enqueue_synapse(requestor)
@@ -384,8 +388,8 @@ module Vertebra
       ops
     end
 
-    def gather(discoverer, jids, op_type, args)
-      ops = scatter(jids, op_type, args)
+    def gather(discoverer, jids, op_type, entree)
+      ops = scatter(jids, op_type, entree)
 
       gatherer = Vertebra::Synapse.new
       gatherer.condition do
@@ -402,10 +406,10 @@ module Vertebra
       enqueue_synapse(gatherer)
     end
 
-    def gather_one(discoverer, jids, op_type, args)
+    def gather_one(discoverer, jids, op_type, entree)
       nexter = Vertebra::Synapse.new
       jid = jids.shift
-      op = direct_op(op_type, jid, args)
+      op = direct_op(op_type, jid, entree)
       nexter.condition do
         op.done? ? :succeeded : :deferred
       end
@@ -417,7 +421,7 @@ module Vertebra
           # The client is done, but it is not in :commit state, so it failed.
           # If there are other jids to try, do so.
           if jids.length > 0
-            gather_one(discoverer, jids, op_type, args)
+            gather_one(discoverer, jids, op_type, entree)
           else
             # There were no other jids to try, so we're out of targets, and have
             # no results; this returns an error.
