@@ -40,24 +40,14 @@ describe 'Vertebra Dispatcher' do
   end
 
   it 'return proper candidate actors' do
-    actor = @dispatcher.candidates({:cluster => resource('/cluster/rd00'), :node => resource('/node/0'), :provides => resource('/mock')}).first
+    actor = @dispatcher.candidates('/', {:cluster => resource('/cluster/rd00'), :node => resource('/node/0'), :provides => resource('/mock')}).first
     actor.should be_a_kind_of(MockActor::Actor)
   end
 
-  it 'should properly match top-level required resources with lower-level provided resources' do
-    Dispatcher.can_provide?([resource('/cluster')], [resource('/cluster/rd00'), resource('/node/1')]).should be_true
-    Dispatcher.can_provide?([resource('/node')], [resource('/cluster/rd00'), resource('/node/1')]).should be_true
-  end
-
-  it 'should not match a top-level required resource with a lower-level one that is not the root of a provided resource' do
-    Dispatcher.can_provide?([resource('/bad')], [resource('/cluster/rd00')]).should be_false
-    Dispatcher.can_provide?([resource('/cluster')], [resource('/bad/rd00')]).should be_false
-  end
-
   it 'should use the op in actor candidate selection' do
-    MockActor::Actor.should === @dispatcher.candidates(['/foo'],'/list/numbers').first
-    MockActor::Actor.should === @dispatcher.candidates(['/foo'],'/list').first
-    @dispatcher.candidates(['/foo'],'/there/is/nothing/here').first.should == nil
+    @dispatcher.candidates('/list/numbers', ['/node/0']).map {|x| x.class}.should == [MockActor::Actor]
+    @dispatcher.candidates('/list', ['/cluster/rd00']).map {|x| x.class}.should == [MockActor::Actor]
+    @dispatcher.candidates('/there/is/nothing/here', ['/foo']).should == []
   end
 
   it 'handles missing actor libraries appropriately during registration' do

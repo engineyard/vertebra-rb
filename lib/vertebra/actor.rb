@@ -207,6 +207,21 @@ module Vertebra
       (default_resources || []) + self.class.provided_resources
     end
 
+    def can_provide?(required_resources)
+      results = []
+      required_resources.each do |req|
+        accepted = false
+        provides.each do |prov|
+          if prov <= req
+            accepted = true
+            break
+          end
+        end
+        results << accepted
+      end
+      results.all? {|r| r }
+    end
+
     def to_s
       "<Actor[#{self.class.name}]: provides=#{provides.map{|n| n.to_s }.join(', ')}>"
     end

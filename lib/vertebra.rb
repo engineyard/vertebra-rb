@@ -41,6 +41,7 @@ require 'vertebra/dispatcher'
 require 'vertebra/resource'
 require 'vertebra/daemon'
 require 'vertebra/elements'
+require 'vertebra/sous_chef'
 
 module Vertebra
 

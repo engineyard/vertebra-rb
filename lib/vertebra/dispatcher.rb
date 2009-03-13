@@ -21,21 +21,6 @@ module Vertebra
   class Dispatcher
     attr_accessor :actors, :default_resources, :agent
 
-    def self.can_provide?(required_resources, provided_resources)
-      results = []
-      required_resources.each do |req|
-        accepted = false
-        provided_resources.each do |prov|
-          if prov <= req
-            accepted = true
-            break
-          end
-        end
-        results << accepted
-      end
-      results.all? {|r| r }
-    end
-
     def initialize(agent, resources = [])
       @agent = agent
       @actors = []
@@ -72,18 +57,18 @@ module Vertebra
       registered
     end
 
-    def candidates(args, op='/')
+    def candidates(op, args)
       logger.debug "in candidates (#{op}) -- args: #{args.inspect}"
       entree = SousChef.prepare(args)
       op_resource = Vertebra::Resource.new(op)
 
       logger.debug "RESOURCES: #{entree.resources.inspect}"
 
-      @actors.select do |actor|
-        self.class.can_provide?(entree.resources, actor.provides)
-      end.select do |actor|
-        actor.op_path_resources.any? {|r| op_resource >= r}
-      end
+      actors.select {|actor|
+        actor.can_provide?(entree.resources)
+      }.select {|actor|
+        actor.op_path_resources.any? {|r| op_resource >= r }
+      }
     end
 
     # handle takes an <op>eration, decodes the arguments to a ruby hash
@@ -93,10 +78,10 @@ module Vertebra
     # is the last result'. If no actors can service the operation, we return
     # a <nil> result marked as final.
     def handle(op)
-      logger.debug "Disptcher handling #{op}"
+      logger.debug "Dispatcher handling #{op}"
       elt = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(elt)
-      actors = candidates(args, op['type'])
+      actors = candidates(op['type'], args)
       scope = elt.attributes.key?('scope') ? elt.attributes['scope'].to_sym : :all
       logger.debug "SCOPE: #{scope.inspect}"
 

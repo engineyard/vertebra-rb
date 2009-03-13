@@ -76,6 +76,18 @@ EOC
     auto_dummy.provides.should == ['/mock','/mockery'].collect {|r| resource(r)}
   end
 
+  it 'should properly match top-level required resources with lower-level provided resources' do
+    auto_dummy = AutoDummyActor.new
+    auto_dummy.can_provide?([resource('/mock')]).should
+    auto_dummy.can_provide?([resource('/mockery')]).should
+  end
+
+  it 'should not match a top-level required resource with a lower-level one that is not the root of a provided resource' do
+    auto_dummy = AutoDummyActor.new
+    auto_dummy.can_provide?([resource('/missing')]).should_not
+    auto_dummy.can_provide?([resource('/mock/test')]).should_not
+  end
+
   it 'should handle both automagic resource identification with explicit resource identification' do
     dummy_too = DummyActor.dup
     dummy_too.class_eval <<EOC
