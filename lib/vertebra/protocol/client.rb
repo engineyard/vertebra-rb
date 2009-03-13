@@ -94,16 +94,6 @@ module Vertebra
         @state = :ready
       end
 
-      def receive(iq)
-        logger.debug "Client#recieve state:#{@state} iq:#{iq.node}"
-        case @state
-        when :ready
-          process_ack_or_nack(iq)
-        when :consume
-          process_data_or_final(iq)
-        end
-      end
-
       def resend
         delay = @last_message_sent.node['retry_delay'].to_i || 0
         delay += 1
@@ -197,6 +187,10 @@ module Vertebra
 
       def done?
         DONE_STATES.include? @state
+      end
+
+      def logger
+        Vertebra.logger
       end
     end
   end

@@ -19,6 +19,8 @@ require File.dirname(__FILE__) + '/spec_helper'
 require 'vertebra/sous_chef.rb'
 
 describe Vertebra::SousChef do
+  include Vertebra::Utils
+
   def prepare(*args)
     Vertebra::SousChef.prepare(*args)
   end
@@ -44,14 +46,14 @@ describe Vertebra::SousChef do
   end
 
   it 'should extract resources' do
-    resources = (0..1).collect {|i| res("/#{i}")}
+    resources = (0..1).collect {|i| resource("/#{i}")}
     prepare(:foo => resources[0]).resources.should == [resources[0]]
     prepare(:foo => {:bar => resources[1]}).resources.should == [resources[1]]
     prepare(:foo => resources).resources.should == resources
   end
 
   it 'should convert resource strings to resources' do
-    prepare("/foo").args.should == {"/foo" => res("/foo")}
+    prepare("/foo").args.should == {"/foo" => resource("/foo")}
   end
 
   it 'should convert "a=b" into {a => b}' do
@@ -61,7 +63,7 @@ describe Vertebra::SousChef do
   it 'should merge multiple arguments' do
     prepare({:foo => 1}, {:bar => 2}).args.should == {:foo => 1, :bar => 2}
     cooked = prepare("a=b", {:foo => 1}, "/res").args
-    cooked.should == {"a" => "b", :foo => 1, "/res" => res("/res")}
+    cooked.should == {"a" => "b", :foo => 1, "/res" => resource("/res")}
   end
 
   it 'should extract jids' do

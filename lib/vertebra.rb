@@ -26,7 +26,6 @@ require 'logger'
 require 'conversion'
 
 require 'rubygems'
-require 'vertebra/rexmladdons'
 require 'vertebra/xmppelement'
 require 'vertebra/jid'
 
@@ -46,8 +45,6 @@ require 'vertebra/elements'
 module Vertebra
 
   class JabberError < StandardError; end
-
-  mattr_accessor :config
 
   # ==== Returns
   # String:: A random 32 character string for use as a unique ID.

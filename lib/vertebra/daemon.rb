@@ -16,24 +16,27 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 module Vertebra
-  module Daemon
+  class Daemon
+    def initialize(config)
+      @config = config
+    end
 
-    def self.daemonize(starter)
+    def daemonize(starter)
      logger.debug "Daemonizing..."
       fork do
         Process.setsid
         exit if fork
-        Vertebra::Daemon.setup_pidfile
+        setup_pidfile
         File.umask 0000
         STDIN.reopen "/dev/null"
-        STDOUT.reopen Vertebra.config[:log_path], "a"
+        STDOUT.reopen @config[:log_path], "a"
         STDERR.reopen STDOUT
         trap("TERM") { exit }
         starter.call
       end
     end
 
-    def self.stop(sig = 15)
+    def stop(sig = 15)
       begin
         pid = IO.read(pidfile).chomp.to_i
         Process.kill(sig, pid)
@@ -53,26 +56,24 @@ module Vertebra
       end
     end
 
-    def self.remove_pid_file
-      FileUtils.rm(Vertebra::Daemon.pidfile) if File.exist?(Vertebra::Daemon.pidfile)
+    def remove_pid_file
+      FileUtils.rm(pidfile) if File.exist?(pidfile)
     end
 
-    def self.setup_pidfile
+    def setup_pidfile
       pid = Process.pid
-      pidfile = Vertebra::Daemon.pidfile
       logger.info "Storing pid #{pid} in #{pidfile}"
       FileUtils.mkdir_p(File.dirname(pidfile)) unless File.directory?(File.dirname(pidfile))
       File.open(pidfile, 'w'){ |f| f.write("#{pid}") }
       at_exit { remove_pid_file }
     end
 
-    def self.pidfile
-      Vertebra.config[:pid_path] || './agent.pid'
+    def pidfile
+      @config[:pid_path] || './agent.pid'
     end
 
     def change_privilege(user, group=user)
-
-     logger.debug "Changing privileges to #{user}:#{group}"
+      logger.debug "Changing privileges to #{user}:#{group}"
 
       uid, gid = Process.euid, Process.egid
       target_uid = Etc.getpwnam(user).uid
@@ -85,7 +86,11 @@ module Vertebra
         Process::UID.change_privilege(target_uid)
       end
     rescue Errno::EPERM => e
-     logger.debug "Couldn't change user and group to #{user}:#{group}: #{e}"
+      logger.debug "Couldn't change user and group to #{user}:#{group}: #{e}"
+    end
+
+    def logger
+      Vertebra.logger
     end
   end
 end

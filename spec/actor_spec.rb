@@ -33,10 +33,11 @@ class AutoDummyActor < Vertebra::Actor
 end
 
 describe Vertebra::Actor do
+  include Vertebra::Utils
 
   before(:all) do
     @dummy = DummyActor.new
-    @dummy.default_resources = [res('/cluster/rd00'), res('/node/1')]
+    @dummy.default_resources = [resource('/cluster/rd00'), resource('/node/1')]
   end
 
   it 'should return correct shell command output' do
@@ -58,7 +59,7 @@ describe Vertebra::Actor do
   end
 
   it 'should provide resources based on the contents of the RESOURCES constant, plus default resources' do
-    @dummy.provides.should == ['/cluster/rd00', '/node/1', '/mock'].collect { |r| res(r) }
+    @dummy.provides.should == ['/cluster/rd00', '/node/1', '/mock'].collect { |r| resource(r) }
   end
 
   it 'should permit multiple "provides" calls to be additive' do
@@ -67,12 +68,12 @@ describe Vertebra::Actor do
 provides '/mock2'
 EOC
     d2 = dummy_too.new
-    d2.provides.should == ['/mock','/mock2'].collect {|r| res(r)}
+    d2.provides.should == ['/mock','/mock2'].collect {|r| resource(r)}
   end
 
   it 'should populate the provided resources from bound ops, automatically' do
     auto_dummy = AutoDummyActor.new
-    auto_dummy.provides.should == ['/mock','/mockery'].collect {|r| res(r)}
+    auto_dummy.provides.should == ['/mock','/mockery'].collect {|r| resource(r)}
   end
 
   it 'should handle both automagic resource identification with explicit resource identification' do
@@ -81,7 +82,7 @@ EOC
 bind_op '/mockery/taunt', :taunt
 EOC
     d2 = dummy_too.new
-    d2.provides.should == ['/mock','/mock2','/mockery'].collect {|r| res(r)}
+    d2.provides.should == ['/mock','/mock2','/mockery'].collect {|r| resource(r)}
   end
 
   it 'should generate correct output from the open4 spawn wrapper' do

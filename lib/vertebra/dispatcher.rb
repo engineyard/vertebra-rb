@@ -55,7 +55,7 @@ module Vertebra
 
         begin
           actor_name = actor.to_s.constantcase
-          actor_class = constant(actor_name)
+          actor_class = Vertebra::Utils.constant(actor_name)
           logger.debug "Registering #{actor_name} as #{actor_class}"
           actor_instance = actor_class.new(actor_config)
           actor_instance.agent = @agent
@@ -65,8 +65,10 @@ module Vertebra
         rescue => e
           logger.debug "Instantiation of actor #{actor.to_s.constantcase} failed; please confirm that the actor class that is desired carries this name."
           logger.debug e.message
+          logger.debug e.backtrace.join("\n")
         end
       end
+
       registered
     end
 
@@ -126,6 +128,10 @@ module Vertebra
 
       @agent.enqueue_synapse(ops_bucket)
       ops_bucket
+    end
+
+    def logger
+      Vertebra.logger
     end
   end
 end

@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require 'rubygems'
+require File.dirname(__FILE__) + '/../lib/vertebra'
 require 'optparse'
 require 'readline'
 require 'vertebra/generator_core'

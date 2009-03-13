@@ -40,8 +40,6 @@ module Vertebra
     SLOW_TIMER_FREQUENCY = 50.0
     FAST_TIMER_FREQUENCY = 5.0
     
-    include Vertebra::Daemon
-
     attr_accessor :drb_port
     attr_reader :jid
 
@@ -49,11 +47,11 @@ module Vertebra
     attr_reader :ttl
 
     def initialize(jid, password, opts = {})
-      Vertebra.config = @opts = opts
-      
+      @opts = opts
+
       raise(ArgumentError, "Please provide at least a Jabber ID and password") if !jid || !password
 
-      Vertebra::Daemon.setup_pidfile unless @opts[:background]
+      daemon.setup_pidfile unless @opts[:background]
 
       @drb_port = @opts[:drb_port]
 
@@ -100,6 +98,10 @@ module Vertebra
 
     def stop
       EM.stop
+    end
+
+    def daemon
+      Daemon.new(@opts)
     end
 
     def install_signal_handlers
@@ -780,6 +782,10 @@ module Vertebra
 
     def add_include_path(path)
       $:.unshift path
+    end
+
+    def logger
+      Vertebra.logger
     end
   end
 end

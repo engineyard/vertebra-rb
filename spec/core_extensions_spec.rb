@@ -69,14 +69,14 @@ class A
   end
 end
 
-describe "Kernel extensions" do
+describe "Utils" do
 
   it "converts class names to the relevant constants" do
-    constant(A::B::C.name).should == A::B::C
-    constant("A::B::C").should == A::B::C
+    Vertebra::Utils.constant(A::B::C.name).should == A::B::C
+    Vertebra::Utils.constant("A::B::C").should == A::B::C
 
     # Return nil instead of blowing up if the constant can't be found.
-    constant("Y::Z").should == nil
+    Vertebra::Utils.constant("Y::Z").should == nil
   end
 
 end

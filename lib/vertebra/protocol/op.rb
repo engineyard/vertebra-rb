@@ -42,6 +42,10 @@ module Vertebra
       iq
     end
 
+    def logger
+      Vertebra.logger
+    end
+
   end
 
 end

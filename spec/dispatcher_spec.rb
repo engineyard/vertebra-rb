@@ -23,6 +23,8 @@ include Vertebra
 
 describe 'Vertebra Dispatcher' do
 
+  include Vertebra::Utils
+
   before do
     $:.push File.join(File.dirname(__FILE__), 'mocks')
     @dispatcher = Dispatcher.new(nil, ['/cluster/rd00', '/node/0'])
@@ -30,7 +32,7 @@ describe 'Vertebra Dispatcher' do
   end
 
   it 'assign default resources' do
-    @dispatcher.default_resources.should == [res('/cluster/rd00'), res('/node/0')]
+    @dispatcher.default_resources.should == [resource('/cluster/rd00'), resource('/node/0')]
   end
 
   it 'register an actor' do
@@ -38,18 +40,18 @@ describe 'Vertebra Dispatcher' do
   end
 
   it 'return proper candidate actors' do
-    actor = @dispatcher.candidates({:cluster => res('/cluster/rd00'), :node => res('/node/0'), :provides => res('/mock')}).first
+    actor = @dispatcher.candidates({:cluster => resource('/cluster/rd00'), :node => resource('/node/0'), :provides => resource('/mock')}).first
     actor.should be_a_kind_of(MockActor::Actor)
   end
 
   it 'should properly match top-level required resources with lower-level provided resources' do
-    Dispatcher.can_provide?([res('/cluster')], [res('/cluster/rd00'), res('/node/1')]).should be_true
-    Dispatcher.can_provide?([res('/node')], [res('/cluster/rd00'), res('/node/1')]).should be_true
+    Dispatcher.can_provide?([resource('/cluster')], [resource('/cluster/rd00'), resource('/node/1')]).should be_true
+    Dispatcher.can_provide?([resource('/node')], [resource('/cluster/rd00'), resource('/node/1')]).should be_true
   end
 
   it 'should not match a top-level required resource with a lower-level one that is not the root of a provided resource' do
-    Dispatcher.can_provide?([res('/bad')], [res('/cluster/rd00')]).should be_false
-    Dispatcher.can_provide?([res('/cluster')], [res('/bad/rd00')]).should be_false
+    Dispatcher.can_provide?([resource('/bad')], [resource('/cluster/rd00')]).should be_false
+    Dispatcher.can_provide?([resource('/cluster')], [resource('/bad/rd00')]).should be_false
   end
 
   it 'should use the op in actor candidate selection' do
@@ -60,11 +62,11 @@ describe 'Vertebra Dispatcher' do
 
   it 'handles missing actor libraries appropriately during registration' do
     registered = @dispatcher.register(['____xzpq____',nil])
-    registered.length.should == 1
+    registered.should be_empty
   end
 
   it 'handles misnamed actor classes appropriately during registration' do
     registered = @dispatcher.register(['Parsedate',nil])
-    registered.length.should == 1
+    registered.should be_empty
   end
 end

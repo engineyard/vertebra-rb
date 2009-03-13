@@ -4,8 +4,6 @@
 # License:: Ruby's license (see the LICENSE file) or GNU GPL, at your option.
 # Website::http://home.gna.org/xmpp4r/
 
-require 'vertebra/rexmladdons'
-
 module Jabber
 
   class XMPPElement < REXML::Element

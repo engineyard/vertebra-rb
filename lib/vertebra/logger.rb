@@ -19,31 +19,27 @@ require 'logger'
 require 'fileutils'
 
 module Vertebra
-  def self.logger
-    unless @logger
-      # If the log_path isn't specified in the configuration, default to /tmp/agent.PID
-      if Vertebra.config && log_path = Vertebra.config[:log_path]
-        case log_path
-        when :error
-          @logger = Logger.new($stderr)
-        end
-      else
-        log_path = "/tmp/agent.#{Process.pid}.log"
+  def self.setup_logger(config)
+    # If the log_path isn't specified in the configuration, default to /tmp/agent.PID
+    if config && log_path = config[:log_path]
+      case log_path
+      when :error
+        @logger = Logger.new($stderr)
       end
-
-      unless @logger
-        log_dir = File.dirname(log_path)
-        FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
-        @logger = Logger.new(log_path)
-      end
-      @logger.datetime_format = "%Y-%m-%d %H:%M:%S"
+    else
+      log_path = "/tmp/agent.#{Process.pid}.log"
     end
-    @logger
-  end
-end
 
-module Kernel
-  def logger
-    Vertebra.logger
+    unless @logger
+      log_dir = File.dirname(log_path)
+      FileUtils.mkdir_p(log_dir) unless File.exists?(log_dir)
+      @logger = Logger.new(log_path)
+    end
+    @logger.level = config[:debug] ? Logger::DEBUG : Logger::INFO
+    @logger.datetime_format = "%Y-%m-%d %H:%M:%S"
+  end
+
+  def self.logger
+    @logger ||= Logger.new($stderr)
   end
 end

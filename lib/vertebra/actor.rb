@@ -239,6 +239,10 @@ module Vertebra
       output.merge({:status => status})
     end
 
+    def logger
+      Vertebra.logger
+    end
+
   end
 end
 

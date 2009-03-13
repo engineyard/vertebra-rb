@@ -69,7 +69,7 @@ module Vertebra
           when PAIR_REGEXP
             args[$1] = $2
           else
-            args[item] = res(item)
+            args[item] = Vertebra::Utils.resource(item)
           end
         end
         [args, jids]

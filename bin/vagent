@@ -16,20 +16,16 @@ module Vertebra
 
     def start(options = {})
       begin
-        logger.level = @config[:debug] ? Logger::DEBUG : Logger::INFO
-        agent_type = 'vertebra/agent'
-
-        require File.dirname(__FILE__) + "/../lib/#{agent_type}"
+        require File.dirname(__FILE__) + "/../lib/vertebra/agent"
 
         start = lambda do
-          agent_class = constant(agent_type.constantcase)
-          agent_class.new(@config[:jid], @config[:password], @config).start
+          Agent.new(@config[:jid], @config[:password], @config).start
         end
 
         options[:background] ? Vertebra::Daemon.daemonize(start) : start.call
       rescue Exception => e
-        logger.error e.message
-        logger.error e.backtrace
+        Vertebra.logger.error e.message
+        Vertebra.logger.error e.backtrace
       end
     end
 
@@ -77,9 +73,10 @@ module Vertebra
       options.symbolize_keys!
       path = options[:config_file] || "/etc/vertebra/agent.yml"
       if File.exists?(path)
-        @config = Vertebra.config = YAML.load(File.read(path))
+        @config = YAML.load(File.read(path))
         @config.merge(options)
         @config.symbolize_keys!
+        Vertebra.setup_logger(@config)
       else
         raise ArgumentError, "Config file #{path} doesn't exist. Specify another with the -c option."
       end
