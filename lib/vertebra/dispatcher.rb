@@ -72,13 +72,13 @@ module Vertebra
 
     def candidates(args, op='/')
       logger.debug "in candidates (#{op}) -- args: #{args.inspect}"
-      resources = args.select {|name, value| Vertebra::Resource === value}.
-                       map{|_,value| value }
-
+      entree = SousChef.prepare(args)
       op_resource = Vertebra::Resource.new(op)
 
+      logger.debug "RESOURCES: #{entree.resources.inspect}"
+
       @actors.select do |actor|
-        self.class.can_provide?(resources, actor.provides)
+        self.class.can_provide?(entree.resources, actor.provides)
       end.select do |actor|
         actor.op_path_resources.any? {|r| op_resource >= r}
       end
