@@ -91,8 +91,8 @@ module MockActor
       bit
     end
     
-    bind_op "/list/letters", :list_letters2
-    desc "/list/letters", "Get a list of letters; the list will be a given size, defaulting to 26, but alterable with a size option"
+    bind_op "/list/letters2", :list_letters2
+    desc "/list/letters2", "Get a list of letters; the list will be a given size, defaulting to 26, but alterable with a size option"
     def list_letters2(options = {})
       size = options['size'].to_i
       size = 26 if size == 0

@@ -51,8 +51,6 @@ module Vertebra
 
       raise(ArgumentError, "Please provide at least a Jabber ID and password") if !jid || !password
 
-      daemon.setup_pidfile unless @opts[:background]
-
       @drb_port = @opts[:drb_port]
 
       #Jabber.debug = @opts[:jabber_debug] || false
@@ -97,11 +95,12 @@ module Vertebra
     end
 
     def stop
-      EM.stop
+      EM.stop if EM.reactor_running?
+      daemon.stop
     end
 
     def daemon
-      Daemon.new(@opts)
+      @daemon ||= Daemon.new(@opts)
     end
 
     def install_signal_handlers
@@ -272,7 +271,14 @@ module Vertebra
       end
     end
 
-    def start
+    def start(background = false)
+      if background
+        daemon.run do
+          start(false)
+        end
+        return
+      end
+
       begin
         DRb.start_service("druby://127.0.0.1:#{@drb_port}", self) if @opts[:use_drb]
       rescue Errno::EADDRINUSE

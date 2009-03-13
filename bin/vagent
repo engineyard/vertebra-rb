@@ -8,32 +8,24 @@ require 'open4'
 module Vertebra
   class AgentRunner < Thor
 
-    before :load_config, :setup_drb
+    before :load_config, :create_agent
 
     desc "start [options]", "Start a Vertebra agent"
     method_options :config_file => :optional, :jid => :optional, :password => :optional, :use_drb => :boolean, :drb_port => :optional, :background => :optional,
                    :debug => :boolean, :jabber_debug => :boolean, :herault_jid => :optional, :log_path => :optional, :pid_path => :optional, :test_mode => :boolean
 
     def start(options = {})
-      begin
-        require File.dirname(__FILE__) + "/../lib/vertebra/agent"
-
-        start = lambda do
-          Agent.new(@config[:jid], @config[:password], @config).start
-        end
-
-        options[:background] ? Vertebra::Daemon.daemonize(start) : start.call
-      rescue Exception => e
-        Vertebra.logger.error e.message
-        Vertebra.logger.error e.backtrace
-      end
+      @agent.start(options[:background])
+    rescue Exception => e
+      Vertebra.logger.error e.message
+      Vertebra.logger.error e.backtrace
     end
 
     desc "stop", "Stop a running Vertebra agent"
     method_options :config_file => :optional
 
     def stop(options = {})
-     Vertebra::Daemon.stop
+      @agent.stop
     end
 
     desc "restart", "Restart a running Vertebra agent"
@@ -65,10 +57,6 @@ module Vertebra
 
     private
 
-    def setup_drb(options = {})
-      @agent = DRbObject.new(nil, "druby://localhost:#{@config[:drb_port]}") if @config[:drb_port]
-    end
-
     def load_config(options = {})
       options.symbolize_keys!
       path = options[:config_file] || "/etc/vertebra/agent.yml"
@@ -80,6 +68,11 @@ module Vertebra
       else
         raise ArgumentError, "Config file #{path} doesn't exist. Specify another with the -c option."
       end
+    end
+
+    def create_agent(options)
+      require "vertebra/agent"
+      @agent = Agent.new(@config[:jid], @config[:password], @config)
     end
 
   end

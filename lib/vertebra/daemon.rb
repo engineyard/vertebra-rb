@@ -21,7 +21,7 @@ module Vertebra
       @config = config
     end
 
-    def daemonize(starter)
+    def run(&block)
      logger.debug "Daemonizing..."
       fork do
         Process.setsid
@@ -29,21 +29,22 @@ module Vertebra
         setup_pidfile
         File.umask 0000
         STDIN.reopen "/dev/null"
-        STDOUT.reopen @config[:log_path], "a"
+        STDOUT.reopen @config[:log_path], "a" unless @config[:log_path].is_a?(Symbol)
         STDERR.reopen STDOUT
         trap("TERM") { exit }
-        starter.call
+        yield
       end
     end
 
     def stop(sig = 15)
       begin
         pid = IO.read(pidfile).chomp.to_i
+        trap(sig, "DEFAULT")
         Process.kill(sig, pid)
-        FileUtils.rm(Vertebra::Daemon.pidfile) if File.exist?(Vertebra::Daemon.pidfile)
+        FileUtils.rm(pidfile) if File.exist?(pidfile)
         logger.info "Stopped agent with PID #{pid}, signal #{sig}"
       rescue Errno::ENOENT
-        logger.error "No pid file was found at #{Vertebra::Daemon.pidfile}"
+        logger.error "No pid file was found at #{pidfile}"
       rescue Errno::EINVAL
         logger.error "Failed to kill PID #{pid}: '#{sig}' is an invalid or unsupported signal number."
       rescue Errno::EPERM
