@@ -48,6 +48,14 @@ describe 'Vertebra Dispatcher' do
     @dispatcher.candidates('/list/numbers', ['/node/0']).map {|x| x.class}.should == [MockActor::Actor]
     @dispatcher.candidates('/list', ['/cluster/rd00']).map {|x| x.class}.should == [MockActor::Actor]
     @dispatcher.candidates('/there/is/nothing/here', ['/foo']).should == []
+    MockActor::Actor.should === @dispatcher.candidates({},'/list/numbers').first
+    MockActor::Actor.should === @dispatcher.candidates({},'/list').first
+    @dispatcher.candidates({},'/there/is/nothing/here').first.should == nil
+  end
+
+  it 'should use resources in the args' do
+    MockActor::Actor.should === @dispatcher.candidates({:foo => {:bar => resource("/cluster/rd00")}}, "/list").first
+    @dispatcher.candidates({:foo => {:bar => resource("/foo")}}, '/list').first.should == nil
   end
 
   it 'handles missing actor libraries appropriately during registration' do
