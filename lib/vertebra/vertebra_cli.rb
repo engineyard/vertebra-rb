@@ -152,7 +152,7 @@ module Vertebra
             puts "Doing discovery #{[@op,@op_args].flatten.inspect}" if @verbose
             resources = @op_args.select {|r| Vertebra::Resource == r}
             @client = agent.discover(@op,*resources)
-            @check_timer = EM::PeriodicTimer.new(50 / 1000) do
+            @check_timer = EM::PeriodicTimer.new(5.0 / 1000) do
               if @client.done?
                 show_results(@client.results)
                 agent.stop
@@ -163,7 +163,7 @@ module Vertebra
           else
             puts "Making request for #{@op} #{@scope} #{@op_args.inspect}" if @verbose
             request = agent.request(@op,@scope,*@op_args)
-            @check_timer = EM::PeriodicTimer.new(50 / 1000) do
+            @check_timer = EM::PeriodicTimer.new(5.0 / 1000) do
               if request[:results]
                 agent.stop
                 show_results(request[:results])
