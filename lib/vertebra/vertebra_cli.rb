@@ -42,8 +42,12 @@ module Vertebra
   class VertebraCLI
     def self.read_config_file(filename)
       path = File.expand_path(filename)
-      options = YAML.load(File.read(path))
-      keys_to_symbols(options)
+      if File.readable? path
+        options = YAML.load(File.read(path))
+        keys_to_symbols(options)
+      else
+        {}
+      end
     end
 
     # Very little command line parsing is done.  A check will be made for a
@@ -55,6 +59,9 @@ module Vertebra
       options ={:config_file => '~/.vertebra/vertebra',
                 :scope => :all,
                 :yaml => true}
+
+      ARGV << '--help' if ARGV.empty?
+
       OptionParser.new do |opts|
         opts.banner = "vertebra /OP [options] [arguments]"
 
