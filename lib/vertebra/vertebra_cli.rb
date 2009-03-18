@@ -37,6 +37,7 @@ module Vertebra
     # swallows all methods called on it.
 
     @@logger = SwallowEverything.new
+    Vertebra.instance_variable_set('@logger',@@logger)
   end
 
   class VertebraCLI
@@ -58,6 +59,7 @@ module Vertebra
     def self.parse_commandline
       options ={:config_file => '~/.vertebra/vertebra',
                 :scope => :all,
+                :iterations => 1,
                 :yaml => true}
 
       ARGV << '--help' if ARGV.empty?
@@ -121,6 +123,10 @@ module Vertebra
                 'The JID for Herault') do |v|
           options[:herault_jid] = v
         end
+        
+        opts.on('-n', '--iterations NUMBER','The number of times to do the op.') do |v|
+          options[:iterations] = v.to_i > 0 ? v.to_i : 1
+        end
 
         opts.on('-?', '-h', '--help') do
           puts opts
@@ -154,32 +160,35 @@ module Vertebra
       agent = Vertebra::Agent.new(@jid, @password, @options)
 
       EM.next_tick do
-#        EM.add_timer(10 / 1000) do
-          if @discovery_only
-            puts "Doing discovery #{[@op,@op_args].flatten.inspect}" if @verbose
-            resources = @op_args.select {|r| Vertebra::Resource == r}
-            @client = agent.discover(@op,*resources)
-            @check_timer = EM::PeriodicTimer.new(5.0 / 1000) do
-              if @client.done?
-                show_results(@client.results)
-                agent.stop
-                @check_timer.cancel
-                @check_timer = nil
-              end
-            end
-          else
-            puts "Making request for #{@op} #{@scope} #{@op_args.inspect}" if @verbose
-            request = agent.request(@op,@scope,*@op_args)
-            @check_timer = EM::PeriodicTimer.new(5.0 / 1000) do
-              if request[:results]
-                agent.stop
-                show_results(request[:results])
-                @check_timer.cancel
-                @check_timer = nil
-              end
+        if @discovery_only
+          puts "Doing discovery #{[@op,@op_args].flatten.inspect}" if @verbose
+          resources = @op_args.select {|r| Vertebra::Resource == r}
+          @client = agent.discover(@op,*resources)
+          @check_timer = EM::PeriodicTimer.new(0.01) do
+            if @client.done?
+              show_results(@client.results)
+              agent.stop
+              @check_timer.cancel
+              @check_timer = nil
             end
           end
- #       end
+        else
+          puts "Making #{@options[:iterations]} request#{@options[:iterations] > 1 ? 's' : ''} for #{@op} #{@scope} #{@op_args.inspect}" if @verbose
+          rq = []
+          @options[:iterations].times do
+            rq << agent.request(@op,@scope,*@op_args)
+          end
+          @check_timer = EM::PeriodicTimer.new(0.01) do
+            dc = 0
+            rq.each {|r| dc += 1 if r[:results]}
+            if dc == @options[:iterations]
+              agent.stop
+              rq.each {|r| show_results(r[:results])}
+              @check_timer.cancel
+              @check_timer = nil
+            end
+          end
+        end
       end
 
       agent.start
@@ -195,7 +204,7 @@ module Vertebra
 
     def self.run
       cli_options = parse_commandline
-      file_options = read_config_file(cli_options.delete :config_file)
+      file_options = read_config_file(cli_options.delete(:config_file))
       @options = file_options.merge cli_options
       Vertebra::disable_logging unless @options.delete :enable_logging
       ## TODO: Fix this so that we don't assign an asston of fields.

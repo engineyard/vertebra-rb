@@ -111,7 +111,7 @@ module Vertebra
         end
       end
 
-      @agent.enqueue_synapse(ops_bucket)
+      @agent.do_or_enqueue_synapse(ops_bucket)
       ops_bucket
     end
 

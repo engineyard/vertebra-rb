@@ -39,6 +39,7 @@ module Vertebra
 
     SLOW_TIMER_FREQUENCY = 50.0
     FAST_TIMER_FREQUENCY = 5.0
+    MIN_TIMER_QUANTUM = 5.0
     
     attr_accessor :drb_port
     attr_reader :jid
@@ -62,6 +63,8 @@ module Vertebra
       @jid.resource ||= 'agent'
       @password = password
 
+      @idle_ticks = 0
+      @idle_threshold = SLOW_TIMER_FREQUENCY / FAST_TIMER_FREQUENCY
       @busy_jids = {}
       @pending_clients = []
       @active_clients = []
@@ -111,11 +114,16 @@ module Vertebra
 
     def install_periodic_actions
       @fast_synapse_timer = EM::PeriodicTimer.new(FAST_TIMER_FREQUENCY / 1000) { synapse_timer_block }
+      EM.set_timer_quantum(5)
       EM.add_periodic_timer(1) { clear_busy_jids }
       EM.add_periodic_timer(2) { monitor_connection_status }
       EM.add_periodic_timer(8) { GC.start }
-      EM.add_timer(1.0 / 1000) { connect } # Try to connect immediately after startup.
+      EM.add_timer(0.001) { connect } # Try to connect immediately after startup.
       EM.add_timer(1) { advertise_resources } # run once, a second after startup.
+    end
+
+    def limited_timer_quantum(q)
+      q <= MIN_TIMER_QUANTUM ? MIN_TIMER_QUANTUM.to_i : q
     end
 
     def synapse_timer_block
@@ -123,13 +131,22 @@ module Vertebra
       fire_synapses
 
       if @fast_synapse_timer && queue_size == 0
-        @fast_synapse_timer.cancel
-        @fast_synapse_timer = nil
-        @slow_synapse_timer = EM::PeriodicTimer.new(SLOW_TIMER_FREQUENCY / 1000) { synapse_timer_block }
+        @idle_ticks += 1
+        if @idle_ticks > @idle_threshold
+          @fast_synapse_timer.cancel
+          @fast_synapse_timer = nil
+          @slow_synapse_timer = EM::PeriodicTimer.new(SLOW_TIMER_FREQUENCY / 1000) { synapse_timer_block }
+          EM.set_timer_quantum(SLOW_TIMER_FREQUENCY.to_i)
+          @idle_ticks = 0
+        end
       elsif @slow_synapse_timer && queue_size > 0
         @slow_synapse_timer.cancel
         @slow_synapse_timer = nil
         @fast_synapse_timer = EM::PeriodicTimer.new(FAST_TIMER_FREQUENCY / 1000) { synapse_timer_block }
+        EM.set_timer_quantum(limited_timer_quantum(FAST_TIMER_FREQUENCY))
+        @idle_ticks = 0
+      else
+        @idle_ticks = 0
       end
     end
 
@@ -147,6 +164,20 @@ module Vertebra
 
     def enqueue_synapse(synapse)
       @synapse_queue << synapse
+    end
+    
+    def do_or_enqueue_synapse(synapse)
+      if synapse && synapse.respond_to?(:deferred_status?)
+        ds = synapse.deferred_status?
+        case ds
+        when :succeeded
+          synapse.set_deferred_status(:succeeded,synapse)
+        when :failed
+          synapse.set_deferred_status(:failed,synapse)
+        else
+          enqueue_synapse(synapse)
+        end
+      end
     end
 
     def fire_synapses

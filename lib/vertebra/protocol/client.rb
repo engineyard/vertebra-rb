@@ -63,31 +63,20 @@ module Vertebra
         initiator = Vertebra::Synapse.new
         initiator[:name] = 'initiator'
         initiator.condition { @agent.connection_is_open_and_authenticated? }
-        # TODO: The logic that deals with this can be messed up, somehow.  Debug it.
-        initiator.condition { @agent.defer_on_busy_jid?(@to) }
-        initiator.callback do
-					logger.debug("setting busy jid #{@to}")
-          @agent.set_busy_jid(@to,self)
-          make_request
-        end
 
-        @agent.enqueue_synapse(initiator)
-        self
-      end
-
-      def make_request
-        requestor = Vertebra::Synapse.new
-        requestor[:name] = 'requestor'
         iq = @op.to_iq(@to, @agent.jid)
         @agent.add_client(@op.token, self)
-        logger.debug "Assigning client to token #{@op.token}"
-        requestor.condition {@agent.connection_is_open_and_authenticated?}
-        requestor.callback do
-          logger.debug "in requestor callback"
+
+        initiator.condition { @agent.defer_on_busy_jid?(@to) }
+        initiator.callback do
+          logger.debug("setting busy jid #{@to}")
+          @agent.set_busy_jid(@to,self)
           @last_message_sent = iq
           @agent.send_iq(iq)
         end
-        @agent.enqueue_synapse(requestor)
+
+        @agent.do_or_enqueue_synapse(initiator)
+        self
       end
 
       def is_ready
@@ -108,9 +97,6 @@ module Vertebra
       end
 
       def process_ack_or_nack(iq, stanza_type, stanza)
-        #TODO: Add state checking code so that we don't get messed up by
-        #unexpected stanzas.
-
         logger.debug "Client#process_ack_or_nack: #{iq.node}"
         case stanza_type
         when :ack
@@ -136,7 +122,7 @@ module Vertebra
           @agent.send_iq(result_iq)
         end
 
-        @agent.enqueue_synapse(response)
+        @agent.do_or_enqueue_synapse(response)
       end
 
       def process_data_or_final(iq, stanza_type, stanza)
@@ -177,7 +163,7 @@ module Vertebra
           end
         end
 
-        @agent.enqueue_synapse(response)
+        @agent.do_or_enqueue_synapse(response)
       end
 
       def results

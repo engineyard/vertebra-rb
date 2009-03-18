@@ -51,7 +51,7 @@ module Vertebra
           receive_request(iq)
         end
         logger.debug "enqueue receiver"
-        @agent.enqueue_synapse(receiver)
+        @agent.do_or_enqueue_synapse(receiver)
       end
 
       def receive_request(iq)
@@ -75,7 +75,7 @@ module Vertebra
           @state = :verify
           process_authorization
         end
-        @agent.enqueue_synapse(responder)
+        @agent.do_or_enqueue_synapse(responder)
       end
 
       def process_authorization
@@ -106,9 +106,9 @@ module Vertebra
               process_not_authorized
             end
           end
-          @agent.enqueue_synapse(verifier)
+          @agent.do_or_enqueue_synapse(verifier)
         end
-        @agent.enqueue_synapse(authorizer)
+        @agent.do_or_enqueue_synapse(authorizer)
       end
 
       def process_authorized
@@ -125,7 +125,7 @@ module Vertebra
           @last_message_sent = iq
           @agent.send_iq(iq)
         end
-        @agent.enqueue_synapse(acknowledger)
+        @agent.do_or_enqueue_synapse(acknowledger)
       end
 
       def process_not_authorized
@@ -141,7 +141,7 @@ module Vertebra
           @last_message_sent = iq
           @agent.send_iq(iq)
         end
-        @agent.enqueue_synapse(terminator)
+        @agent.do_or_enqueue_synapse(terminator)
       end
 
       def process_nack_result
@@ -222,18 +222,18 @@ module Vertebra
                 # If there are no results then force sending the 'final' stanza
                 process_data_result if result_iqs.empty?
               end
-              @agent.enqueue_synapse(notifier)
+              @agent.do_or_enqueue_synapse(notifier)
             end
 
-            @agent.enqueue_synapse(bucket_handler)
+            @agent.do_or_enqueue_synapse(bucket_handler)
           else
             notifier.callback do
               @agent.send_iq(result_iq)
             end
-            @agent.enqueue_synapse(notifier)
+            @agent.do_or_enqueue_synapse(notifier)
           end
         end
-        @agent.enqueue_synapse(dispatcher)
+        @agent.do_or_enqueue_synapse(dispatcher)
       end
 
       def process_data_result(iq = nil)
