@@ -57,18 +57,15 @@ module Vertebra
       registered
     end
 
-    def candidates(op, args)
-      logger.debug "in candidates (#{op}) -- args: #{args.inspect}"
-      entree = SousChef.prepare(args)
-      op_resource = Vertebra::Resource.new(op)
+    def candidates(type, args)
+      logger.debug "in candidates (#{type}) -- args: #{args.inspect}"
+      resources = Vertebra::Utils.resources_hash_from_args(type, args)
 
-      logger.debug "RESOURCES: #{entree.resources.inspect}"
+      logger.debug "RESOURCES: #{resources.inspect}"
 
-      actors.select {|actor|
-        actor.can_provide?(entree.resources)
-      }.select {|actor|
-        actor.op_path_resources.any? {|r| op_resource >= r }
-      }
+      actors.select do |actor|
+        actor.can_provide?(resources.values) && actor.op_path_resources.any? {|r| type >= r }
+      end
     end
 
     # handle takes an <op>eration, decodes the arguments to a ruby hash
@@ -81,7 +78,7 @@ module Vertebra
       logger.debug "Dispatcher handling #{op}"
       elt = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(elt)
-      actors = candidates(op['type'], args)
+      actors = candidates(Resource.new(op['type']), args)
       scope = elt.attributes.key?('scope') ? elt.attributes['scope'].to_sym : :all
       logger.debug "SCOPE: #{scope.inspect}"
 

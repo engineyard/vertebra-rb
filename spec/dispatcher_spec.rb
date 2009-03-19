@@ -40,19 +40,19 @@ describe 'Vertebra Dispatcher' do
   end
 
   it 'return proper candidate actors' do
-    actor = @dispatcher.candidates('/', {:cluster => resource('/cluster/rd00'), :node => resource('/node/0'), :provides => resource('/mock')}).first
+    actor = @dispatcher.candidates(resource('/list'), :cluster => resource('/cluster/rd00'), :node => resource('/node/0'), :provides => resource('/mock')).first
     actor.should be_a_kind_of(MockActor::Actor)
   end
 
   it 'should use the op in actor candidate selection' do
-    @dispatcher.candidates('/list/numbers', ['/node/0']).map {|x| x.class}.should == [MockActor::Actor]
-    @dispatcher.candidates('/list', ['/cluster/rd00']).map {|x| x.class}.should == [MockActor::Actor]
-    @dispatcher.candidates('/there/is/nothing/here', ['/foo']).should == []
+    @dispatcher.candidates(resource('/list/numbers'), :node => resource('/node/0')).map {|x| x.class}.should == [MockActor::Actor]
+    @dispatcher.candidates(resource('/list'), :cluster => resource('/cluster/rd00')).map {|x| x.class}.should == [MockActor::Actor]
+    @dispatcher.candidates(resource('/there/is/nothing/here'), :foo => '/foo').should == []
   end
 
   it 'should use resources in the args' do
-    MockActor::Actor.should === @dispatcher.candidates('/list', {:foo => {:bar => resource("/cluster/rd00")}}).first
-    @dispatcher.candidates('/list', {:foo => {:bar => resource("/foo")}}).first.should == nil
+    MockActor::Actor.should === @dispatcher.candidates(resource('/list'), {:foo => resource("/cluster/rd00")}).first
+    @dispatcher.candidates(resource('/list'), {:foo => resource("/foo")}).first.should == nil
   end
 
   it 'handles missing actor libraries appropriately during registration' do
