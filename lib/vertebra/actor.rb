@@ -208,18 +208,11 @@ module Vertebra
     end
 
     def can_provide?(required_resources)
-      results = []
-      required_resources.each do |req|
-        accepted = false
-        provides.each do |prov|
-          if prov <= req
-            accepted = true
-            break
-          end
+      required_resources.all? do |req|
+        provides.any? do |provide|
+          provide >= req
         end
-        results << accepted
       end
-      results.all? {|r| r }
     end
 
     def to_s

@@ -57,7 +57,15 @@ module Vertebra
       Resource.new(text)
     end
 
-    module_function :constant, :resource
+    def resources_hash_from_args(type, args)
+      resources = {:op_type => type}
+      args.each do |key,value|
+        resources[key] = value if value.is_a?(Resource)
+      end
+      resources
+    end
+
+    module_function :constant, :resource, :resources_hash_from_args
   end
 end
 

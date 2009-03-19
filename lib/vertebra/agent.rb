@@ -17,7 +17,6 @@
 
 require 'vertebra/dispatcher'
 require 'vertebra/actor'
-require 'vertebra/sous_chef'
 require 'vertebra/synapse'
 require 'vertebra/synapse_queue'
 
@@ -328,7 +327,7 @@ module Vertebra
     def request(type, scope, args, jids = nil, &block)
       token = Vertebra.gen_token
 
-      synapse = Outcall.start(self, token, type, scope, args, jids)
+      synapse = Outcall.start(self, token, Resource.new(type), scope, args, jids)
 
       # TODO: Should this have a timeout on it? I think probably, yes.
       requestor = Vertebra::Synapse.new

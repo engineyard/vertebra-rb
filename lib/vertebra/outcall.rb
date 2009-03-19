@@ -107,11 +107,6 @@ module Vertebra
       @agent.enqueue_synapse(nexter)
     end
 
-    # TODO: This should be a Hash
-    def resources
-      SousChef.extract_resources(@args)
-    end
-
     # #discover takes as args a list of resources either in string form
     # (/foo/bar) or as instances of Vertebra::Resource.  It returns a list
     # of jids that will handle any of the resources.
@@ -121,13 +116,10 @@ module Vertebra
         return
       end
 
-      args = {:op_type => Vertebra::Utils.resource(@type)}
-      resources.each do |resource|
-        args[resource.to_s] = resource
-      end
+      resources = Vertebra::Utils.resources_hash_from_args(@type, @args)
 
       logger.debug "DISCOVERING: #{@type.inspect}, #{resources.inspect} on #{@herault_jid}"
-      client = raw_op('/security/discover', @agent.herault_jid, args)
+      client = raw_op('/security/discover', @agent.herault_jid, resources)
       requestor = Vertebra::Synapse.new
       requestor.condition do
         client.done? ? :succeeded : :deferred

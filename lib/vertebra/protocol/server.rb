@@ -163,6 +163,7 @@ module Vertebra
 
             result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
             logger.error "operation FAILED #{@op}: #{e.class}: #{e.message}"
+            logger.debug e.backtrace.inspect
             error_tag = Vertebra::Error.new(token)
             Vertebra::Marshal.encode(:error => e).children.each do |child|
               error_tag.add(child) # Insert the marshalled error XML into the error tag
