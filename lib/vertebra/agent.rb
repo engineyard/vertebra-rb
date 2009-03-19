@@ -325,15 +325,9 @@ module Vertebra
       end
     end
 
-    def direct_op(op_type, to, *args)
-      entree = if SousChef::Entree === args.last
-                 args.pop
-               else
-                 SousChef.prepare(*args)
-               end
-      op = Vertebra::Op.new(op_type, entree.scope, entree.args)
-      logger.debug("#direct_op #{op_type} #{to} #{args.inspect} for #{self}")
-      Vertebra::Protocol::Client.start(self, op, to)
+    def raw_op(token, type, to, scope, args)
+      raise ArgumentError, "#{args.inspect} is not a Hash" unless args.is_a?(Hash)
+      Vertebra::Protocol::Client.start(self, token, type, to, scope, args)
     end
 
     def op(op_type, to, *args)
@@ -346,9 +340,14 @@ module Vertebra
     # #discover takes as args a list of resources either in string form
     # (/foo/bar) or as instances of Vertebra::Resource.  It returns a list
     # of jids that will handle any of the resources.
-    def discover(*resources)
-      logger.debug "DISCOVERING: #{resources.inspect} on #{@herault_jid}"
-      direct_op('/security/discover', @herault_jid, *resources.collect {|r| Vertebra::Resource === r ? r.to_s : r})
+    def discover(token, type, scope, resources)
+      args = {:op_type => Vertebra::Utils.resource(type)}
+      resources.each do |resource|
+        args[resource.to_s] = resource
+      end
+
+      logger.debug "DISCOVERING: #{type.inspect}, #{resources.inspect} on #{@herault_jid}"
+      raw_op(token, '/security/discover', @herault_jid, scope, args)
     end
 
     def request(op_type, *raw_args)
@@ -358,13 +357,12 @@ module Vertebra
       # scope is not given, :all is the assumed scope.
 
       entree = SousChef.prepare(*raw_args)
-
-      entree.args['__scope__'] = entree.scope
+      token = Vertebra.gen_token
 
       discoverer = Vertebra::Synapse.new
       discoverer.callback do
         requestor = Vertebra::Synapse.new
-        discoverer[:client] = discover(op_type, *entree.resources)
+        discoverer[:client] = discover(token, op_type, entree.scope, entree.resources)
         requestor.condition do
           discoverer[:client].done? ? :succeeded : :deferred
         end
@@ -379,9 +377,9 @@ module Vertebra
           if jids.empty?
             discoverer[:results] = []
           elsif entree.scope == :all
-            gather(discoverer, target_jids, op_type, entree)
+            gather(token, discoverer, target_jids, op_type, entree)
           else
-            gather_one(discoverer, target_jids.sort_by { rand }, op_type, entree)
+            gather_one(token, discoverer, target_jids.sort_by { rand }, op_type, entree)
           end
         end
         enqueue_synapse(requestor)
@@ -418,17 +416,17 @@ module Vertebra
 
     # This method queue an op for each jid, and returns a hash containing the
     # client protocol object for each.
-    def scatter(jids, op_type, args)
+    def scatter(token, jids, op_type, args)
       ops = {}
       jids.each do |jid|
-        logger.debug "scatter# #{op_type} | #{jid} | #{args.inspect}"
-        ops[jid] = direct_op(op_type, jid, args)
+        logger.debug "scatter# #{token} #{op_type} | #{jid} | #{args.inspect}"
+        ops[jid] = raw_op(token, op_type, jid, :all, args)
       end
       ops
     end
 
-    def gather(discoverer, jids, op_type, entree)
-      ops = scatter(jids, op_type, entree)
+    def gather(token, discoverer, jids, op_type, entree)
+      ops = scatter(token, jids, op_type, entree)
 
       gatherer = Vertebra::Synapse.new
       gatherer.condition do
@@ -445,10 +443,10 @@ module Vertebra
       enqueue_synapse(gatherer)
     end
 
-    def gather_one(discoverer, jids, op_type, entree)
+    def gather_one(token, discoverer, jids, op_type, entree)
       nexter = Vertebra::Synapse.new
       jid = jids.shift
-      op = direct_op(op_type, jid, entree)
+      op = raw_op(token, op_type, jid, :single, entree.args)
       nexter.condition do
         op.done? ? :succeeded : :deferred
       end
@@ -775,6 +773,10 @@ module Vertebra
           end
         end
       end
+    end
+
+    def direct_op(type, to, args)
+      raw_op(Vertebra.gen_token, type, to, :direct, args)
     end
 
     def advertise_op(resources, ttl = @ttl)

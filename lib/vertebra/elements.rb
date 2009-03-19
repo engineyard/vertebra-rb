@@ -17,26 +17,14 @@
 
 module Vertebra
   class BaseElement < Jabber::XMPPElement
-    def initialize(tok = nil)
+    def initialize(token = nil)
       super()
-      add_attribute('token', tok)
+      add_attribute('token', token)
     end
 
     def token
       attributes['token']
     end
-  end
-
-  class Authorization < Jabber::XMPPElement
-    name_xmlns 'authorization', 'http://xmlschema.engineyard.com/agent/api'
-    force_xmlns true
-
-    def initialize(from = nil, to = nil)
-      super()
-      add_attribute('from', from)
-      add_attribute('to', to)
-    end
-
   end
 
   class Ack < BaseElement
@@ -62,34 +50,18 @@ module Vertebra
     name_xmlns 'error', 'http://xmlschema.engineyard.com/agent/api'
   end
 
-  class Operation < BaseElement
+  class Init < BaseElement
     name_xmlns 'op', 'http://xmlschema.engineyard.com/agent/api'
     force_xmlns true
 
-    def initialize(type = nil, scope = :all, token = '')
-      super()
+    def initialize(token, type, scope)
+      super(token)
       add_attribute('scope', scope.to_s)
       add_attribute('type', type.to_s)
-      add_attribute('token', token)
-    end
-
-    def token=(val)
-      attributes['token'] = val
     end
 
     def type
       attributes['type']
     end
   end
-
-  class Res < Jabber::XMPPElement
-    name_xmlns 'res', 'http://xmlschema.engineyard.com/agent/api'
-
-    def initialize(res = nil, name = nil)
-      super()
-      add_attribute('name', name)
-      self.text = res
-    end
-  end
-
 end

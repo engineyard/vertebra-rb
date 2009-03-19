@@ -18,12 +18,10 @@
 require File.dirname(__FILE__) + '/spec_helper'
 require 'vertebra'
 
-include Vertebra
-
 describe 'Agent-related elements' do
 
   before do
-    @agent_classes = [Authorization, Ack, Vertebra::Data, Operation, Res]
+    @agent_classes = [Vertebra::Ack, Vertebra::Data]
   end
 
   it 'have agent api xml namespace' do
@@ -31,6 +29,10 @@ describe 'Agent-related elements' do
       element = klass.new
       element.attributes['xmlns'].should == 'http://xmlschema.engineyard.com/agent/api'
     end
+  end
+
+  it 'have agent api xml namespace' do
+    Vertebra::Init.new("abc", "/foo/bar", :single).attributes['xmlns'].should == 'http://xmlschema.engineyard.com/agent/api'
   end
 
 end
