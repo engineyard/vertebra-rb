@@ -26,18 +26,6 @@ module Vertebra
       @handle = handle
     end
 
-    # #discover takes as args a list of resources either
-    # in string form (/foo/bar) or as instances of
-    # Vertebra::Resource.  It returns a list of jids that
-    # will handle any of the resources.
-    def discover(*resources)
-      op('/security/discover',
-         @handle.herault_jid,
-         *resources.collect do |r|
-        Vertebra::Resource === r ? r.to_s : r
-         end)
-    end
-
     def direct_op(op_type, to, *args)
       @handle.direct_op(op_type, to, *args)
     end

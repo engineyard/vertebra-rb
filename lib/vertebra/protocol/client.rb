@@ -46,17 +46,15 @@ module Vertebra
     class Client
       DONE_STATES = [:commit, :authfail, :error]
 
-      attr_reader :state, :to
+      attr_reader :state, :token, :type, :to, :scope, :args
 
-      def self.start(agent, op, to)
-        new(agent, op, to).start
+      def self.start(agent, token, type, to, scope, args)
+        new(agent, token, type, to, scope, args).start
       end
 
-      def initialize(agent, op, to)
-        @agent = agent
+      def initialize(agent, token, type, to, scope, args)
+        @agent, @token, @type, @to, @scope, @args = agent, token, type, to, scope, args
         @state = :new
-        @to = to
-        @op = op
       end
 
       def start
@@ -64,8 +62,19 @@ module Vertebra
         initiator[:name] = 'initiator'
         initiator.condition { @agent.connection_is_open_and_authenticated? }
 
-        iq = @op.to_iq(@to, @agent.jid)
-        @agent.add_client(@op.token, self)
+        iq = LM::Message.new(@to, LM::MessageType::IQ, LM::MessageSubType::SET)
+        op = Vertebra::Init.new(@token, @type, @scope)
+
+        iq.node.set_attribute('xml:lang','en')
+        iq.node.add_child(op)
+        op_lm = iq.node.get_child(op.name)
+
+        Vertebra::Marshal.encode(@args).children.each do |el|
+          op_lm.add_child el
+        end
+        logger.debug "CREATED IQ #{iq.node.to_s} with class #{iq.class}"
+
+        @agent.add_client(@token, self)
 
         initiator.condition { @agent.defer_on_busy_jid?(@to) }
         initiator.callback do

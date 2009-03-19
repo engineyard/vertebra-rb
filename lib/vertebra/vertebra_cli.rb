@@ -160,33 +160,19 @@ module Vertebra
       agent = Vertebra::Agent.new(@jid, @password, @options)
 
       EM.next_tick do
-        if @discovery_only
-          puts "Doing discovery #{[@op,@op_args].flatten.inspect}" if @verbose
-          resources = @op_args.select {|r| Vertebra::Resource == r}
-          @client = agent.discover(@op,*resources)
-          @check_timer = EM::PeriodicTimer.new(0.01) do
-            if @client.done?
-              show_results(@client.results)
-              agent.stop
-              @check_timer.cancel
-              @check_timer = nil
-            end
-          end
-        else
-          puts "Making #{@options[:iterations]} request#{@options[:iterations] > 1 ? 's' : ''} for #{@op} #{@scope} #{@op_args.inspect}" if @verbose
-          rq = []
-          @options[:iterations].times do
-            rq << agent.request(@op,@scope,*@op_args)
-          end
-          @check_timer = EM::PeriodicTimer.new(0.01) do
-            dc = 0
-            rq.each {|r| dc += 1 if r[:results]}
-            if dc == @options[:iterations]
-              agent.stop
-              rq.each {|r| show_results(r[:results])}
-              @check_timer.cancel
-              @check_timer = nil
-            end
+        puts "Making #{@options[:iterations]} request#{@options[:iterations] > 1 ? 's' : ''} for #{@op} #{@scope} #{@op_args.inspect}" if @verbose
+        rq = []
+        @options[:iterations].times do
+          rq << agent.request(@op,@scope,*@op_args)
+        end
+        @check_timer = EM::PeriodicTimer.new(0.01) do
+          dc = 0
+          rq.each {|r| dc += 1 if r[:results]}
+          if dc == @options[:iterations]
+            agent.stop
+            rq.each {|r| show_results(r[:results])}
+            @check_timer.cancel
+            @check_timer = nil
           end
         end
       end
@@ -208,7 +194,7 @@ module Vertebra
       @options = file_options.merge cli_options
       Vertebra::disable_logging unless @options.delete :enable_logging
       ## TODO: Fix this so that we don't assign an asston of fields.
-      [:discovery_only, :jid, :op, :op_args,
+      [:jid, :op, :op_args,
        :password, :scope, :verbose, :yaml].each do |option|
         instance_variable_set("@#{option}", @options.delete(option))
       end

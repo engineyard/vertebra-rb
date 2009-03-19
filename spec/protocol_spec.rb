@@ -53,12 +53,13 @@ describe Vertebra::Protocol::Client do
       mock.def(:set_busy_jid) {|jid, client| }
       mock.def(:add_client) {|token, client| }
       mock.def(:enqueue_synapse) {|synapse| synapses << synapse}
+      mock.def(:do_or_enqueue_synapse) {|synapse| synapses << synapse}
       mock.def(:parse_token) {|node| }
     end
 
-    @op = Vertebra::Op.new("/foo", :all, {})
     @to = "to@localhost"
-    @client = Vertebra::Protocol::Client.start(@agent, @op, @to)
+    @token = Vertebra.gen_token
+    @client = Vertebra::Protocol::Client.start(@agent, @token, "/foo", @to, :all, {})
   end
 
   it 'Should enqueue a synapse during initialization' do
@@ -91,14 +92,7 @@ describe Vertebra::Protocol::Client do
 
     2.times { @synapses.fire }
 
-    expected_iq = @op.to_iq(@to, AGENT_JID)
-    # The nodes have different 'id' attributes until I set them. I'm not
-    # worried about what the 'id' is, so I'm just going to make sure they're
-    # equal.
-    iq_id = actual_iq.node.get_attribute('id')
-    expected_iq.node.set_attribute('id', iq_id)
-
-    actual_iq.node.to_s.should == expected_iq.node.to_s
+    actual_iq.node.child.get_attribute('token').should == @token
   end
 
   def create_iq
