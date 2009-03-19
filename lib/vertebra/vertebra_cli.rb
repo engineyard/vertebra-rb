@@ -113,12 +113,6 @@ module Vertebra
           options[:enable_logging] = v
         end
 
-        opts.on('--discover',
-                'Do discovery only.',
-                '   (This is primarily a developer tool.)') do |v|
-          options[:discovery_only] = v
-        end
-
         opts.on('--herault-jid JID',
                 'The JID for Herault') do |v|
           options[:herault_jid] = v
@@ -135,20 +129,24 @@ module Vertebra
       end.parse!
 
       # Pull the op
-      options[:op] = ARGV.shift
+      options[:type] = ARGV.shift
 
       # Now search the rest of the args to identify the resources
 
-      op_args = []
+      op_args = {}
       ARGV.each do |arg|
-        if arg =~ /string:([^\s]*)/
-          op_args << $1
-        elsif arg =~ /string:(["'])([^\1]*)/ # TODO: This regexp can be improved.
-          op_args << $2
-        elsif arg =~ /res:([^\s]*)/
-          op_args << Vertebra::Resource.new($1)
+        if arg =~ /^([^=]+)=(.+)$/
+          key, value = $1, $2
+          case value
+          when /^string:(.+)$/
+            op_args[key] = $1
+          when /^res:(.+)$/
+            op_args[key] = Vertebra::Resource.new($1)
+          else
+            raise ArgumentError, "The value #{value.inspect} does not have a valid prefix"
+          end
         else
-          op_args << arg
+          raise ArgumentError, "The arg should be in the form: 'key=prefix:value'"
         end
       end
       options[:op_args] = op_args
@@ -160,19 +158,17 @@ module Vertebra
       agent = Vertebra::Agent.new(@jid, @password, @options)
 
       EM.next_tick do
-        puts "Making #{@options[:iterations]} request#{@options[:iterations] > 1 ? 's' : ''} for #{@op} #{@scope} #{@op_args.inspect}" if @verbose
-        rq = []
+        puts "Making #{@options[:iterations]} request#{@options[:iterations] > 1 ? 's' : ''} for #{@type} #{@scope} #{@op_args.inspect}" if @verbose
+        rq = 0
         @options[:iterations].times do
-          rq << agent.request(@op,@scope,*@op_args)
-        end
-        @check_timer = EM::PeriodicTimer.new(0.01) do
-          dc = 0
-          rq.each {|r| dc += 1 if r[:results]}
-          if dc == @options[:iterations]
-            agent.stop
-            rq.each {|r| show_results(r[:results])}
-            @check_timer.cancel
-            @check_timer = nil
+          rq += 1
+          agent.request(@type, @scope, @op_args) do |results|
+            show_results(results)
+            rq -= 1
+
+            if rq == 0
+              agent.stop
+            end
           end
         end
       end
@@ -194,7 +190,7 @@ module Vertebra
       @options = file_options.merge cli_options
       Vertebra::disable_logging unless @options.delete :enable_logging
       ## TODO: Fix this so that we don't assign an asston of fields.
-      [:jid, :op, :op_args,
+      [:jid, :type, :op_args,
        :password, :scope, :verbose, :yaml].each do |option|
         instance_variable_set("@#{option}", @options.delete(option))
       end

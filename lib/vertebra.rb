@@ -32,7 +32,6 @@ require 'vertebra/jid'
 require 'loudmouth'
 require 'vertebra/loudmouth_extension'
 require 'eventmachine'
-require 'vertebra/protocol/op'
 require 'vertebra/protocol/client'
 require 'vertebra/protocol/server'
 require 'vertebra/logger'
@@ -42,6 +41,7 @@ require 'vertebra/resource'
 require 'vertebra/daemon'
 require 'vertebra/elements'
 require 'vertebra/sous_chef'
+require 'vertebra/outcall'
 
 module Vertebra
 

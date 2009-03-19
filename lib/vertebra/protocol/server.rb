@@ -82,33 +82,22 @@ module Vertebra
         logger.debug "Server#process_authorization"
         op = @iq.node.get_child('op')
         rexml_op = REXML::Document.new(op.to_s).root
-        res = []
+        res = {}
 
         rexml_op.children.each do |el|
           next if el.is_a?(REXML::Text)
-          res << el.text if el.name == 'res'
+          res[el.text] = el.text if el.name == 'res'
         end
-        res << {'from' => @iq.node.get_attribute("from").to_s, 'to' => @iq.node.get_attribute("to").to_s}
+        res['from'] = @iq.node.get_attribute("from").to_s
+        res['to'] = @iq.node.get_attribute("to").to_s
 
-        authorizer = Vertebra::Synapse.new
-        authorizer.condition { @agent.connection_is_open_and_authenticated? }
-        authorizer.callback do
-          auth_client = @agent.direct_op('/security/authorize', @agent.herault_jid, *res)
-
-          # TODO: Should this have a timeout on it? I think probably, yes.
-          verifier = Vertebra::Synapse.new
-          verifier.condition { @agent.connection_is_open_and_authenticated? }
-          verifier.condition { auth_client.done? ? true : :deferred }
-          verifier.callback do
-            if auth_client.results['response'] == 'authorized'
-              process_authorized
-            else
-              process_not_authorized
-            end
+        @agent.request('/security/authorize', :direct, res, [@agent.herault_jid]) do |results|
+          if results['response'] == 'authorized'
+            process_authorized
+          else
+            process_not_authorized
           end
-          @agent.do_or_enqueue_synapse(verifier)
         end
-        @agent.do_or_enqueue_synapse(authorizer)
       end
 
       def process_authorized
