@@ -48,19 +48,19 @@ module Vertebra
 
       attr_reader :state, :token, :type, :to, :scope, :args
 
-      def self.start(agent, token, type, to, scope, args)
-        new(agent, token, type, to, scope, args).start
+      def self.start(outcall, token, type, to, scope, args)
+        new(outcall, token, type, to, scope, args).start
       end
 
-      def initialize(agent, token, type, to, scope, args)
-        @agent, @token, @type, @to, @scope, @args = agent, token, type, to, scope, args
+      def initialize(outcall, token, type, to, scope, args)
+        @outcall, @token, @type, @to, @scope, @args = outcall, token, type, to, scope, args
         @state = :new
       end
 
       def start
         initiator = Vertebra::Synapse.new
         initiator[:name] = 'initiator'
-        initiator.condition { @agent.connection_is_open_and_authenticated? }
+        initiator.condition { @outcall.connection_is_open_and_authenticated? }
 
         iq = LM::Message.new(@to, LM::MessageType::IQ, LM::MessageSubType::SET)
         op = Vertebra::Init.new(@token, @type, @scope)
@@ -74,21 +74,22 @@ module Vertebra
         end
         logger.debug "CREATED IQ #{iq.node.to_s} with class #{iq.class}"
 
-        @agent.add_client(@token, self)
+        @outcall.add_client(@token, self)
 
-        initiator.condition { @agent.defer_on_busy_jid?(@to) }
+        initiator.condition { @outcall.defer_on_busy_jid?(@to) }
         initiator.callback do
           logger.debug("setting busy jid #{@to}")
-          @agent.set_busy_jid(@to,self)
+          @outcall.set_busy_jid(@to,self)
           @last_message_sent = iq
-          @agent.send_iq(iq)
+          @outcall.send_iq(iq)
         end
 
-        @agent.do_or_enqueue_synapse(initiator)
+        @outcall.do_or_enqueue_synapse(initiator)
         self
       end
 
-      def is_ready
+      def is_ready(token)
+        @token = token
         @state = :ready
       end
 
@@ -98,11 +99,11 @@ module Vertebra
         @last_message_sent.node['retry_delay'] = delay.to_s
         logger.debug "Resending #{@last_message_sent.node}"
         resender = Vertebra::Synapse.new
-        resender.condition { @agent.connection_is_open_and_authenticated? }
+        resender.condition { @outcall.connection_is_open_and_authenticated? }
         resender.callback do
-          @agent.send_iq(@last_message_sent)
+          @outcall.send_iq(@last_message_sent)
         end
-        EM.add_timer((Math.log(delay + 0.1)).to_i) { @agent.enqueue_synapse(resender) }
+        EM.add_timer((Math.log(delay + 0.1)).to_i) { @outcall.enqueue_synapse(resender) }
       end
 
       def process_ack_or_nack(iq, stanza_type, stanza)
@@ -124,14 +125,14 @@ module Vertebra
 
         response = Vertebra::Synapse.new
         response[:name] = 'process_ack_or_nack response'
-        response.condition { @agent.connection_is_open_and_authenticated? }
+        response.condition { @outcall.connection_is_open_and_authenticated? }
         response.callback do
           logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
           @last_message_sent = result_iq
-          @agent.send_iq(result_iq)
+          @outcall.send_iq(result_iq)
         end
 
-        @agent.do_or_enqueue_synapse(response)
+        @outcall.do_or_enqueue_synapse(response)
       end
 
       def process_data_or_final(iq, stanza_type, stanza)
@@ -146,12 +147,12 @@ module Vertebra
           raw_element = REXML::Document.new(stanza.to_s).root
           results = @results
           @results = {:error => Vertebra::Marshal.decode(raw_element), :results => results}
-          @agent.remove_client(@agent.parse_token(iq.node.find_child('error')))
+          @outcall.remove_client(@token)
         when :final
           @state = :commit
-          logger.debug "DELETING TOKEN #{@agent.parse_token(iq.node.find_child('final'))}"
-          @agent.deja_vu_map.delete(iq.node['token'])
-          @agent.remove_client(@agent.parse_token(iq.node.find_child('final')))
+          logger.debug "DELETING TOKEN #{@token}"
+          @outcall.deja_vu_map.delete(@token)
+          @outcall.remove_client(@token)
         end
 
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
@@ -162,17 +163,17 @@ module Vertebra
         result_iq.node.set_attribute('type', 'result')
         response = Vertebra::Synapse.new
         response[:name] = 'process_data_or_final response'
-        response.condition { @agent.connection_is_open_and_authenticated? }
+        response.condition { @outcall.connection_is_open_and_authenticated? }
         response.callback do
           logger.debug "Client#process_data_or_final: sending #{result_iq.node}"
           @last_message_sent = result_iq
-          @agent.send_iq(result_iq)
+          @outcall.send_iq(result_iq)
           if [:final, :error].include?(stanza_type)
-            @agent.remove_busy_jid(@to,self)
+            @outcall.remove_busy_jid(@to,self)
           end
         end
 
-        @agent.do_or_enqueue_synapse(response)
+        @outcall.do_or_enqueue_synapse(response)
       end
 
       def results

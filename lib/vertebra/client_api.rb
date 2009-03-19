@@ -15,9 +15,6 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'vertebra/resource'
-require 'loudmouth'
-
 module Vertebra
   class ClientAPI
     attr_accessor :handle
@@ -26,45 +23,16 @@ module Vertebra
       @handle = handle
     end
 
-    def direct_op(op_type, to, *args)
-      @handle.direct_op(op_type, to, *args)
-    end
-
-    def op(op_type, to, *args)
-      client = direct_op(op_type, to, *args)
-      while !(z = client.done?)
-        sleep 0.05
-      end
-      client.results
-    end
-
-    def request(op_type, *raw_args)
-      discoverer = @handle.request(op_type, *raw_args)
+    def request(*args, &block)
+      discoverer = @handle.request(*args)
       until (discoverer.has_key?(:results))
         sleep 0.05
       end
-      discoverer[:results]
-    end
-
-    def advertise_op(resources, ttl = @handle.ttl)
-      client = @handle.advertise_op(resources,ttl)
-
-      while !(z = client.done?)
-        sleep 0.05
+      if block_given?
+        yield discoverer[:results]
+      else
+        discoverer[:results]
       end
     end
-
-    def unadvertise_op(resources)
-      advertise_op(resources,0)
-    end
-
-    def send_packet(*args)
-      @handle.send_packet(*args)
-    end
-    
-    def send_packet_with_reply(*args)
-      @handle.send_packet_with_reply(*args)
-    end
-
   end
 end

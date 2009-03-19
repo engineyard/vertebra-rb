@@ -325,68 +325,27 @@ module Vertebra
       end
     end
 
-    def raw_op(token, type, to, scope, args)
-      raise ArgumentError, "#{args.inspect} is not a Hash" unless args.is_a?(Hash)
-      Vertebra::Protocol::Client.start(self, token, type, to, scope, args)
-    end
-
-    def op(op_type, to, *args)
-      # The old op() model doesn't work in an evented architecture, since it is blocking.
-      # TODO: Figure out if we need to simulate it somehow (i.e. fake fibers with threads
-      # to make it look blocking) or if direct_op() is sufficient.
-      raise "This is probably not needed"
-    end
-
-    # #discover takes as args a list of resources either in string form
-    # (/foo/bar) or as instances of Vertebra::Resource.  It returns a list
-    # of jids that will handle any of the resources.
-    def discover(token, type, scope, resources)
-      args = {:op_type => Vertebra::Utils.resource(type)}
-      resources.each do |resource|
-        args[resource.to_s] = resource
-      end
-
-      logger.debug "DISCOVERING: #{type.inspect}, #{resources.inspect} on #{@herault_jid}"
-      raw_op(token, '/security/discover', @herault_jid, scope, args)
-    end
-
-    def request(op_type, *raw_args)
-      # If the scope of the request is going to be specified, it should be
-      # passed via a symbol as the first arg -- :single or :all.  That arg
-      # will be removed from the list before issuing the request.  If a
-      # scope is not given, :all is the assumed scope.
-
-      entree = SousChef.prepare(*raw_args)
+    def request(type, scope, args, jids = nil, &block)
       token = Vertebra.gen_token
 
-      discoverer = Vertebra::Synapse.new
-      discoverer.callback do
-        requestor = Vertebra::Synapse.new
-        discoverer[:client] = discover(token, op_type, entree.scope, entree.resources)
-        requestor.condition do
-          discoverer[:client].done? ? :succeeded : :deferred
-        end
+      synapse = Outcall.start(self, token, type, scope, args, jids)
+
+      # TODO: Should this have a timeout on it? I think probably, yes.
+      requestor = Vertebra::Synapse.new
+      requestor.condition { connection_is_open_and_authenticated? }
+      requestor.condition { synapse.has_key?(:results) ? true : :deferred }
+      if block_given?
         requestor.callback do
-          jids = discoverer[:client].results
-          if Array === jids
-            target_jids = jids.concat(entree.jids)
-          else
-            target_jids = jids['jids'].concat(entree.jids)
-          end
-
-          if jids.empty?
-            discoverer[:results] = []
-          elsif entree.scope == :all
-            gather(token, discoverer, target_jids, op_type, entree)
-          else
-            gather_one(token, discoverer, target_jids.sort_by { rand }, op_type, entree)
-          end
+          yield synapse[:results]
         end
-        enqueue_synapse(requestor)
+      else
+        requestor.callback do
+          requestor[:results] = synapse[:results]
+        end
       end
-      enqueue_synapse(discoverer)
 
-      discoverer
+      do_or_enqueue_synapse(requestor)
+      requestor
     end
 
     def send_iq(iq)
@@ -394,84 +353,6 @@ module Vertebra
     rescue Exception => e
       logger.debug "KABOOM!  #{e}"  
     end
-
-    def send_packet(to,typ,packet_id,packet) # This exists only for debugging purposes.
-      iq = LM::Message.new(to,LM::MessageType::IQ)
-      iq.node['id'] = packet_id.to_s
-      iq.node.raw_mode = true
-      iq.root_node.set_attribute('type',typ)
-      iq.node.value = packet.to_s
-      logger.debug("SENDING TEST PACKET #{iq.node}")
-      send_iq(iq)
-    end
-
-    def send_packet_with_reply(to,typ,packet_id,packet) # This exists only for debugging purposes.
-      iq = LM::Message.new(to,LM::MessageType::IQ)
-      iq.node['id'] = packet_id.to_s
-      iq.node.raw_mode = true
-      iq.root_node.set_attribute('type',typ)
-      iq.node.value = packet.to_s
-      @conn.send_with_reply(iq) {|resp_iq| logger.debug "DEBUGGING PACKET: #{resp_iq.node.to_s}" }
-    end
-
-    # This method queue an op for each jid, and returns a hash containing the
-    # client protocol object for each.
-    def scatter(token, jids, op_type, args)
-      ops = {}
-      jids.each do |jid|
-        logger.debug "scatter# #{token} #{op_type} | #{jid} | #{args.inspect}"
-        ops[jid] = raw_op(token, op_type, jid, :all, args)
-      end
-      ops
-    end
-
-    def gather(token, discoverer, jids, op_type, entree)
-      ops = scatter(token, jids, op_type, entree)
-
-      gatherer = Vertebra::Synapse.new
-      gatherer.condition do
-        num_finished = 0
-        ops.each { |jid, client| num_finished += 1 if client.done? }
-        num_finished == ops.size ? :succeeded : :deferred
-      end
-      gatherer.callback do
-        results = []
-        ops.each { |jid, client| results << client.results unless client.results.empty? }
-
-        discoverer[:results] = results
-      end
-      enqueue_synapse(gatherer)
-    end
-
-    def gather_one(token, discoverer, jids, op_type, entree)
-      nexter = Vertebra::Synapse.new
-      jid = jids.shift
-      op = raw_op(token, op_type, jid, :single, entree.args)
-      nexter.condition do
-        op.done? ? :succeeded : :deferred
-      end
-      
-      nexter.callback do
-        if op.state == :commit
-          discoverer[:results] = op.results
-        else
-          # The client is done, but it is not in :commit state, so it failed.
-          # If there are other jids to try, do so.
-          if jids.length > 0
-            gather_one(discoverer, jids, op_type, entree)
-          else
-            # There were no other jids to try, so we're out of targets, and have
-            # no results; this returns an error.
-            # Clarify: Should the code do this, or should it return an array
-            # of ALL of the errors that were received?
-            discoverer[:results] = [:error, "Operation Failed"]
-          end
-        end        
-      end
-      
-      enqueue_synapse(nexter)
-    end
-
 
     def parse_token(iq)
       iq['token']
@@ -591,7 +472,7 @@ module Vertebra
         if client
           clients[token] = client
           clients.delete(left)
-          client.is_ready
+          client.is_ready(token)
           @unhandled = false
         end
       end
@@ -775,18 +656,18 @@ module Vertebra
       end
     end
 
-    def direct_op(type, to, args)
-      raw_op(Vertebra.gen_token, type, to, :direct, args)
-    end
-
     def advertise_op(resources, ttl = @ttl)
       logger.debug "ADVERTISING: #{resources.inspect}"
-      direct_op('/security/advertise', @herault_jid, :resources => resources, :ttl => ttl)
+      request('/security/advertise', :direct, {:resources => resources, :ttl => ttl}, [@herault_jid]) do
+        logger.debug "Advertisement succeeded"
+      end
     end
 
     def unadvertise_op(resources)
       logger.debug "UNADVERTISING: #{resources.inspect}"
-      direct_op('/security/advertise', @herault_jid, :resources => resources, :ttl => 0)
+      request('/security/advertise', :direct, {:resources => resources, :ttl => 0}, [@herault_jid]) do
+        logger.debug "Unadvertisement succeeded"
+      end
     end
 
     def advertise_resources
@@ -806,15 +687,6 @@ module Vertebra
 
     def self.default_status
       (File.exists?("/proc") ? File.read("/proc/loadavg") : `uptime`.split(":").last).gsub("\n", '')
-    end
- 
-    def determine_scope(*args)
-      args.each do |arg|
-        if arg.respond_to?(:has_key?) && arg.has_key?('__scope__')
-          return arg['__scope__'].to_s.intern
-        end
-      end
-      :all
     end
 
     private
