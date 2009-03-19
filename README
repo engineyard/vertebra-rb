@@ -46,16 +46,8 @@ variable representing the agent:
 The port number is optional. The default is 10392, the port defined in the
 client.yml example.
 
-To perform a discovery operation against Herault:
-
-> @agent.discover '/cluster/rd00', '/slice/0', '/gem'
-
-This command returns a hash of JIDs that provide the requested resources.
-
-To send an operation to a JID and wait for its results, use op or op,
-depending on the IQ packet type:
-
-> @agent.op('/gem/list','rd00-s00000@localhost')
+To send an operation to a JID and wait for its results, use request:
+> @agent.request('/gem/list', :direct, {}, ['rd00-s00000@localhost'])
 
 To perform a single operation over a set of resources which includes
 discovering the actors and JIDs that provide them, use the #request method:
@@ -63,7 +55,7 @@ discovering the actors and JIDs that provide them, use the #request method:
 In this example, you get a hash of jids and their results, which should be
 arrays of numbers from any agent that matches the given resources.
 
-results_hash = @agent.request('list', *['/cluster/rd00', '/gem'])
+results_hash = @agent.request('/list', :all, :cluster => '/cluster/rd00', :resource => '/gem')
 
 === Vertebra Clients -- vertebra
 
@@ -90,7 +82,6 @@ vertebra /OP [vertebra-flags] [op arguments]
   --inspect         Display the results of the op in the Ruby inspect format.
   --log             Turn logging on. This will write an agent.PID.log file to
                     the temp directory, logging the CLI actions. Off by default.
-  --discover        Do discovery only. This is primarily a developer tool.
   --help            Show this text.
   
 Anything on the command line that is not one of the above flags is passed to
@@ -99,7 +90,7 @@ on the command line, one should preface any resource with 'res:'.
 
 i.e.
 
-vertebra /gem/list res:/cluster/rd00 res:/slice/0
+vertebra /gem/list cluster=res:/cluster/rd00 slice=res:/slice/0
 
 All resources that are provided on the command line will be used for discovery.
 
