@@ -41,7 +41,11 @@ module Vertebra
   end
 
   class VertebraCLI
-    def self.read_config_file(filename)
+    def self.run(argv=ARGV)
+      self.new.run(argv)
+    end
+
+    def read_config_file(filename)
       path = File.expand_path(filename)
       if File.readable? path
         options = YAML.load(File.read(path))
@@ -56,7 +60,7 @@ module Vertebra
     # points to a config file, and the first remaining arg in the list will
     # be assumed to be the operation to invoke.
 
-    def self.parse_commandline(argv)
+    def parse_commandline(argv)
       options ={:config_file => '~/.vertebra/vertebra',
                 :scope => :all,
                 :iterations => 1,
@@ -153,7 +157,7 @@ module Vertebra
       options
     end
 
-    def self.dispatch_request
+    def dispatch_request
       puts "Initializing agent with #{@jid}:#{@password}" if @verbose
       agent = Vertebra::Agent.new(@jid, @password, @options)
 
@@ -176,7 +180,7 @@ module Vertebra
       agent.start
     end
 
-    def self.show_results(results)
+    def show_results(results)
       if @yaml
         puts results.to_yaml
       else
@@ -184,7 +188,7 @@ module Vertebra
       end
     end
 
-    def self.run(argv=ARGV)
+    def run(argv)
       cli_options = parse_commandline(argv)
       file_options = read_config_file(cli_options.delete(:config_file))
       @options = file_options.merge cli_options
@@ -199,7 +203,7 @@ module Vertebra
 
     private
 
-    def self.keys_to_symbols(hash)
+    def keys_to_symbols(hash)
       newhash = {}
       hash.each {|k,v| newhash[k.to_s.intern] = v}
       newhash
