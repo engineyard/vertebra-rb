@@ -65,7 +65,13 @@ module Vertebra
       resources
     end
 
-    module_function :constant, :resource, :resources_hash_from_args
+    def keys_to_symbols(hash)
+      newhash = {}
+      hash.each {|k,v| newhash[k.to_s.intern] = v}
+      newhash
+    end
+
+    module_function :constant, :keys_to_symbols, :resource, :resources_hash_from_args
   end
 end
 

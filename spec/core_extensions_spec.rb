@@ -79,4 +79,12 @@ describe "Utils" do
     Vertebra::Utils.constant("Y::Z").should == nil
   end
 
+  it "it should convert string keys to symbols" do
+    hash = {'abc' => 123, :def => 456}
+    newhash = Vertebra::Utils.keys_to_symbols(hash)
+    newhash[:def].should == 456
+    newhash['abc'].should == nil
+    newhash[:abc].should == 123
+  end
+
 end

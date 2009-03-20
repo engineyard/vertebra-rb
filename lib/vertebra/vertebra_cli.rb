@@ -204,13 +204,5 @@ module Vertebra
       end
       dispatch_request
     end
-
-    private
-
-    def keys_to_symbols(hash)
-      newhash = {}
-      hash.each {|k,v| newhash[k.to_s.intern] = v}
-      newhash
-    end
   end
 end

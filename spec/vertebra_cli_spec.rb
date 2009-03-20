@@ -39,27 +39,15 @@ describe Vertebra::SwallowEverything do
 end
 
 describe Vertebra::VertebraCLI do
-  it "self.dispatch_request" do
-    # TODO: Implement reasonable tests of the dispatching.
+  it "#dispatch_request" do
+    pending "not implemented"
   end
 
-  it "self.show_results" do
-    orig_stdout = $stdout
-    captured_stdout = StringIO.new
-    $stdout = captured_stdout
-    # TODO: finish writing the test for this.
-    $stdout = orig_stdout
+  it "#show_results" do
+    pending "not implemented"
   end
-  
-  it "self.run" do
-    # TODO: write a test for this method.
-  end
-  
-  it "self.keys_to_symbols" do
-    hash = {'abc' => 123, :def => 456}
-    newhash = Vertebra::VertebraCLI.__send__(:keys_to_symbols,hash)
-    newhash[:def].should == 456
-    newhash['abc'].should == nil
-    newhash[:abc].should == 123
+
+  it "#run" do
+    pending "not implemented"
   end
 end
