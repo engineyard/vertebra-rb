@@ -117,7 +117,7 @@ module Vertebra
                 'The JID for Herault') do |v|
           options[:herault_jid] = v
         end
-        
+
         opts.on('-n', '--iterations NUMBER','The number of times to do the op.') do |v|
           options[:iterations] = v.to_i > 0 ? v.to_i : 1
         end
