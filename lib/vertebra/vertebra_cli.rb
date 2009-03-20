@@ -55,11 +55,6 @@ module Vertebra
       end
     end
 
-    # Very little command line parsing is done.  A check will be made for a
-    # --single or --all flag.  A check will be made for a --config flag that
-    # points to a config file, and the first remaining arg in the list will
-    # be assumed to be the operation to invoke.
-
     def parse_commandline(argv)
       options ={:config_file => '~/.vertebra/vertebra',
                 :scope => :all,
