@@ -56,81 +56,91 @@ module Vertebra
     end
 
     def parse_commandline(argv)
-      options ={:config_file => '~/.vertebra/vertebra',
-                :scope => :all,
-                :iterations => 1,
-                :yaml => true}
-
+      options = default_options
       argv << '--help' if argv.empty?
-
       OptionParser.new do |opts|
-        opts.banner = "vertebra /OP [options] [arguments]"
+        init_options(opts)
+        add_options(opts, options)
+      end.parse!(argv)
+      parse_args(argv, options)
+      options
+    end
 
-        opts.on('--single',
-                'Dispatch the op with a scope of \'single\'.') do
-          options[:scope] = :single
-        end
+    def default_options
+      {:config_file => '~/.vertebra/vertebra',
+       :scope => :all,
+       :iterations => 1,
+       :yaml => true}
+    end
 
-        opts.on('--all',
-                'Dispatch the op with a scope of \'all\'.',
-                '   (default)') do
-          options[:scope] = :all
-        end
+    def init_options(opts)
+      opts.banner = "vertebra /OP [options] [arguments]"
+    end
 
-        opts.on('--config FILENAME',
-                'Specify a config file to use.',
-                '   (defaults to ~/.vertebra/vertebra)') do |v|
-          options[:config_file] = v
-        end
+    def add_options(opts, options)
+      opts.on('--single',
+              'Dispatch the op with a scope of \'single\'.') do
+        options[:scope] = :single
+      end
 
-        opts.on('--jid JID',
-                'The JID to use to connect to XMPP.') do |v|
-          options[:jid] = v
-        end
+      opts.on('--all',
+              'Dispatch the op with a scope of \'all\'.',
+              '   (default)') do
+        options[:scope] = :all
+      end
 
-        opts.on('--password PASSWORD',
-                'The password for the XMPP JID.') do |v|
-          options[:password] = v
-        end
+      opts.on('--config FILENAME',
+              'Specify a config file to use.',
+              '   (defaults to ~/.vertebra/vertebra)') do |v|
+        options[:config_file] = v
+      end
 
-        opts.on('-v', '--[no-]verbose', "Toggle verbose mode") do |v|
-          options[:verbose] = v
-        end
+      opts.on('--jid JID',
+              'The JID to use to connect to XMPP.') do |v|
+        options[:jid] = v
+      end
 
-        opts.on('--inspect',
-                'Display results in the Ruby inspect format.') do |v|
-          options[:yaml] = !v
-        end
+      opts.on('--password PASSWORD',
+              'The password for the XMPP JID.') do |v|
+        options[:password] = v
+      end
 
-        opts.on('--yaml',
-                'Display results as YAML.',
-                '   (default)') do |v|
-          options[:yaml] = v
-        end
+      opts.on('-v', '--[no-]verbose', "Toggle verbose mode") do |v|
+        options[:verbose] = v
+      end
 
-        opts.on('--log', 'Enable logging') do |v|
-          options[:enable_logging] = v
-        end
+      opts.on('--inspect',
+              'Display results in the Ruby inspect format.') do |v|
+        options[:yaml] = !v
+      end
 
-        opts.on('--herault-jid JID',
-                'The JID for Herault') do |v|
-          options[:herault_jid] = v
-        end
+      opts.on('--yaml',
+              'Display results as YAML.',
+              '   (default)') do |v|
+        options[:yaml] = v
+      end
 
-        opts.on('-n', '--iterations NUMBER','The number of times to do the op.') do |v|
-          options[:iterations] = v.to_i > 0 ? v.to_i : 1
-        end
+      opts.on('--log', 'Enable logging') do |v|
+        options[:enable_logging] = v
+      end
 
-        opts.on('-?', '-h', '--help') do
-          puts opts
-          exit
-        end
-      end.parse!
+      opts.on('--herault-jid JID',
+              'The JID for Herault') do |v|
+        options[:herault_jid] = v
+      end
 
-      # Pull the op
+      opts.on('-n', '--iterations NUMBER','The number of times to do the op.') do |v|
+        options[:iterations] = v.to_i > 0 ? v.to_i : 1
+      end
+
+      opts.on('-?', '-h', '--help') do
+        puts opts
+        exit
+      end
+    end
+
+    def parse_args(argv, options)
       options[:type] = argv.shift
-
-      # Now search the rest of the args to identify the resources
 
       op_args = {}
       argv.each do |arg|
@@ -149,7 +159,6 @@ module Vertebra
         end
       end
       options[:op_args] = op_args
-      options
     end
 
     def dispatch_request
