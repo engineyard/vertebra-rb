@@ -91,7 +91,7 @@ module MockActor
       bit
     end
     
-    bind_op "/list/letters2", :list_letters2
+    bind_op "/list/letters", :list_letters2
     desc "/list/letters2", "Get a list of letters; the list will be a given size, defaulting to 26, but alterable with a size option"
     def list_letters2(options = {})
       size = options['size'].to_i
@@ -104,6 +104,11 @@ module MockActor
       end.call('',size)
     end
 
+    bind_op "/list/kaboom", :list_kaboom
+    desc "/list/kaboom", "Doesn't actually do anything other than raise an exception"
+    def list_kaboom(options = {})
+      raise "Kaboom!"
+    end
   end
 end
 
