@@ -56,13 +56,13 @@ module Vertebra
     # points to a config file, and the first remaining arg in the list will
     # be assumed to be the operation to invoke.
 
-    def self.parse_commandline
+    def self.parse_commandline(argv)
       options ={:config_file => '~/.vertebra/vertebra',
                 :scope => :all,
                 :iterations => 1,
                 :yaml => true}
 
-      ARGV << '--help' if ARGV.empty?
+      argv << '--help' if argv.empty?
 
       OptionParser.new do |opts|
         opts.banner = "vertebra /OP [options] [arguments]"
@@ -129,12 +129,12 @@ module Vertebra
       end.parse!
 
       # Pull the op
-      options[:type] = ARGV.shift
+      options[:type] = argv.shift
 
       # Now search the rest of the args to identify the resources
 
       op_args = {}
-      ARGV.each do |arg|
+      argv.each do |arg|
         if arg =~ /^([^=]+)=(.+)$/
           key, value = $1, $2
           case value
@@ -184,8 +184,8 @@ module Vertebra
       end
     end
 
-    def self.run
-      cli_options = parse_commandline
+    def self.run(argv=ARGV)
+      cli_options = parse_commandline(argv)
       file_options = read_config_file(cli_options.delete(:config_file))
       @options = file_options.merge cli_options
       Vertebra::disable_logging unless @options.delete :enable_logging
