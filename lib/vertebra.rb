@@ -41,6 +41,14 @@ require 'vertebra/resource'
 require 'vertebra/daemon'
 require 'vertebra/elements'
 require 'vertebra/outcall'
+require 'vertebra/stanza'
+require 'vertebra/stanzas/session'
+require 'vertebra/stanzas/init'
+require 'vertebra/stanzas/ack'
+require 'vertebra/stanzas/nack'
+require 'vertebra/stanzas/data'
+require 'vertebra/stanzas/final'
+require 'vertebra/stanzas/error'
 
 module Vertebra
 

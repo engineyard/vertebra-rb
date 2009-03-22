@@ -43,7 +43,7 @@ module Vertebra
     attr_accessor :drb_port
     attr_reader :jid
 
-    attr_accessor :dispatcher, :herault_jid, :clients, :servers, :conn, :deja_vu_map
+    attr_reader :dispatcher, :herault_jid, :clients, :servers, :conn, :deja_vu_map
     attr_reader :ttl, :opts
 
     def initialize(jid, password, opts = {})
@@ -360,34 +360,9 @@ module Vertebra
 
     def handle_iq(iq)
       logger.debug "handle_iq: #{iq.node}"
-      @unhandled = true
 
-      handle_errors(iq)
       handle_duplicates(iq)
-
-      handle_op_set(iq)
-      handle_op_result(iq)
-
-      handle_ack_result(iq)
-      handle_ack_set(iq)
-
-      handle_nack_result(iq)
-      handle_nack_set(iq)
-
-      handle_data_result(iq)
-      handle_data_set(iq)
-      
-      handle_final_result(iq)
-      handle_final_set(iq)
-
-      handle_error_result(iq) # Note: Something about this seems wrong, but maybe I'm just confused; Double check it!
-
-      handle_unhandled(iq)
-    end
-
-    def handle_errors(iq)
       if iq.sub_type == LM::MessageSubType::ERROR
-        @unhandled = false
         error = iq.node.get_child('error')
         # Check to see if the error is one we want to retry.
         if error['type'] == 'wait' || (error['type'] == 'cancel' && error['code'].to_s == '503')
@@ -407,252 +382,70 @@ module Vertebra
             enqueue_synapse(error_handler)
           end
         end
+        return
       end
+
+      Stanza.handle(self, iq)
     end
 
     def handle_duplicates(iq)
-      if @unhandled
-        # Handle Duplicates
-        # To do this, check the received stanza against the deja_vu_map.
-        #   match by token
-        #     id
-        token = parse_token(iq.node.child)
-        iq_id = iq.node['id']
-        if duplicate = @deja_vu_map[token][iq_id]
-          @unhandled = false
-          # If there is a match, then we have seen it before in an existing
-          # conversation.
-          # If we have seen it before, then either:
-          # It's a RESULT, we'll just drop it on the floor.
-          # Or it is a SET, and we need to do something sensible with it.
+      # Handle Duplicates
+      # To do this, check the received stanza against the deja_vu_map.
+      #   match by token
+      #     id
+      token = parse_token(iq.node.child)
+      iq_id = iq.node['id']
+      if duplicate = @deja_vu_map[token][iq_id]
+        # If there is a match, then we have seen it before in an existing
+        # conversation.
+        # If we have seen it before, then either:
+        # It's a RESULT, we'll just drop it on the floor.
+        # Or it is a SET, and we need to do something sensible with it.
 
-          if iq.sub_type == LM::MessageSubType::SET
-            # The sensible thing to do with a IQ-set that we have already
-            # seen is to just synthesize an IQ-result.
-            result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
-            result_iq.node.raw_mode = true
-            result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
-            result_iq.node.set_attribute('xml:lang','en')
-            result_iq.node.value = iq.node.child
-            result_iq.root_node.set_attribute('type', 'result')
+        if iq.sub_type == LM::MessageSubType::SET
+          # The sensible thing to do with a IQ-set that we have already
+          # seen is to just synthesize an IQ-result.
+          result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
+          result_iq.node.raw_mode = true
+          result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
+          result_iq.node.set_attribute('xml:lang','en')
+          result_iq.node.value = iq.node.child
+          result_iq.root_node.set_attribute('type', 'result')
 
-            response = Vertebra::Synapse.new
-            response[:name] = 'duplicate response'
-            response.condition { connection_is_open_and_authenticated? }
-            response.callback do
-              logger.debug "Agent#handle_duplicates: sending #{result_iq.node}"
-              send_iq(result_iq)
-            end
-            enqueue_synapse(response)
+          response = Vertebra::Synapse.new
+          response[:name] = 'duplicate response'
+          response.condition { connection_is_open_and_authenticated? }
+          response.callback do
+            logger.debug "Agent#handle_duplicates: sending #{result_iq.node}"
+            send_iq(result_iq)
           end
+          enqueue_synapse(response)
         end
+        true
+      else
+        false
       end
     end
 
-    def handle_op_set(iq)
-      # Protocol::Server
-      if @unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::SET
-        token = parse_token(op)
-        @deja_vu_map[token][iq.node['id']] = iq
-        logger.debug "in op set; token: #{token}/#{token.size}"
-        @unhandled = false
-        # The protocol object will take care of enqueing itself.
-        logger.debug "Creating server protocol"
-        Vertebra::Protocol::Server.new(self,iq)
-      end
-    end
-    
-    def handle_op_result(iq)
-      # Protocol::Client
-      if @unhandled && (op = iq.node.get_child('op')) && iq.sub_type == LM::MessageSubType::RESULT
-        logger.debug "Got token: #{parse_token(op).inspect}"
-        token = parse_token(op)
-        left, right = token.split(':',2)
-        client = @clients[left]
-        if client
-          clients[token] = client
-          clients.delete(left)
-          client.is_ready(token)
-          @unhandled = false
-        end
-      end
-    end
-    
-    def handle_ack_result(iq)
-      #Protocol::Server
-      if @unhandled && (ack = iq.node.get_child('ack')) && iq.sub_type == LM::MessageSubType::RESULT
-        server = @servers[parse_token(ack)]
-        if server
-          ack_handler = Vertebra::Synapse.new
-          ack_handler[:client] = server
-          ack_handler[:state] = :ack
-          ack_handler.callback {logger.debug "ack"; server.process_operation}
-          enqueue_synapse(ack_handler)
-          @unhandled = false
-        end
-      end
-    end
-    
-    def handle_ack_set(iq)
-      # Protocol::Client
-      if @unhandled && (ack = iq.node.get_child('ack')) && iq.sub_type == LM::MessageSubType::SET
-        token = parse_token(ack)
-        client = @clients[token]
-        if client
-          @deja_vu_map[token][iq.node['id']] = iq
-          ack_handler = Vertebra::Synapse.new
-          ack_handler[:client] = client
-          ack_handler[:state] = :ack
-          ack_handler.callback {logger.debug "ack"; client.process_ack_or_nack(iq, :ack, ack)}
-          enqueue_synapse(ack_handler)
-          @unhandled = false
-        end
-      end
-    end
-
-    def handle_nack_result(iq)
-      #Protocol::Server
-      if @unhandled && (nack = iq.node.get_child('nack')) && iq.sub_type == LM::MessageSubType::RESULT
-        server = @servers[parse_token(nack)]
-        if server
-          ack_handler = Vertebra::Synapse.new
-          ack_handler[:client] = server
-          ack_handler[:state] = :nack
-          ack_handler.callback {logger.debug "nack"; server.process_nack_result}
-          enqueue_synapse(ack_handler)
-          @unhandled = false
-        end
-      end
-    end
-    
-    def handle_nack_set(iq)
-      # Protocol::Client
-      if @unhandled && (nack = iq.node.get_child('nack')) && iq.sub_type == LM::MessageSubType::SET
-        token = parse_token(nack)
-        client = @clients[token]
-        if client
-          @deja_vu_map[token][iq.node['id']] = iq
-          nack_handler = Vertebra::Synapse.new
-          nack_handler[:client] = client
-          nack_handler[:state] = :nack
-          nack_handler.callback {logger.debug "nack"; client.process_ack_or_nack(iq, :nack, nack)}
-          enqueue_synapse(nack_handler)
-          @unhandled = false
-        end
-      end
-    end
-    
-    def handle_data_result(iq)
-      # Protocol::Server
-      if @unhandled && (result = iq.node.get_child('data')) && iq.sub_type == LM::MessageSubType::RESULT
-        server = @servers[parse_token(result)]
-        if server
-          result_handler = Vertebra::Synapse.new
-          result_handler[:client] = server
-          result_handler[:state] = :result
-          result_handler.callback {logger.debug "data"; server.process_data_result(result)}
-          enqueue_synapse(result_handler)
-          @unhandled = false
-        end
-      end
-    end
-    
-    def handle_data_set(iq)
-      # Protocol::Client
-      if @unhandled && (result = iq.node.get_child('data')) && iq.sub_type == LM::MessageSubType::SET
-        token = parse_token(result)
-        client = @clients[token]
-        if client
-          @deja_vu_map[token][iq.node['id']] = iq
-          result_handler = Vertebra::Synapse.new
-          result_handler[:client] = client
-          result_handler[:state] = :result
-          result_handler.callback {logger.debug "data"; client.process_data_or_final(iq, :result, result)}
-          enqueue_synapse(result_handler)
-          @unhandled = false
-        end
-      end
-    end
-
-    def handle_final_result(iq)
-      # Protocol::Server
-      if @unhandled && (final = iq.node.get_child('final')) && iq.sub_type == LM::MessageSubType::RESULT
-        token = parse_token(final)
-        server = @servers[token]
-        if server
-          final_handler = Vertebra::Synapse.new
-          final_handler[:client] = server
-          final_handler[:state] = :final
-          final_handler.callback {logger.debug "final"; @servers.delete(token); server.process_final}
-          enqueue_synapse(final_handler)
-          @unhandled = false
-        end
-      end
-    end
-    
-    def handle_final_set(iq)
-      # Protocol::Client
-      if @unhandled && (final = iq.node.get_child('final')) && iq.sub_type == LM::MessageSubType::SET
-        token = parse_token(final)
-        client = @clients[token]
-        if client
-          @deja_vu_map[token][iq.node['id']] = iq
-          final_handler = Vertebra::Synapse.new
-          final_handler[:client] = client
-          final_handler[:state] = :final
-          final_handler.callback {logger.debug "final"; client.process_data_or_final(iq, :final, final)}
-          enqueue_synapse(final_handler)
-          @unhandled = false
-        end
-      end
-    end
-
-    def handle_error_result(iq)
-      # Protocol::Server
-      if @unhandled && (error = iq.node.get_child('error')) && iq.sub_type == LM::MessageSubType::RESULT
-        token = parse_token(error)
-        server = @servers[token]
-        if server
-          error_handler = Vertebra::Synapse.new
-          error_handler[:client] = server
-          error_handler[:state] = :error
-          error_handler.callback {logger.debug "error"; @servers.delete(token); server.process_error}
-          enqueue_synapse(error_handler)
-          @unhandled = false
-        end
-      end
-    end
-  
     def handle_unhandled(iq)
-      if @unhandled
-        # Make sure this isn't something that we just don't care about, like an
-        # <iq type="result"><session>
+      # TODO: This feels kind of gross, below.  I want a better API for doing
+      # this stuff without inserting transport layer specific manipulations
+      # into the core of the code.
+      if iq.sub_type == LM::MessageSubType::SET
+        error_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
+        error_iq.node['type'] = 'error'
+        error_iq.node.set_attribute("id", iq.node.get_attribute("id"))
+        error_iq.node.set_attribute('xml:lang','en')
 
-        case iq.node.child.name
-        when 'session'
-          # Yeah, don't care about these
-          logger.debug "#{iq.node} getting ignored; uninteresting"
-        else
-          # TODO: This feels kind of gross, below.  I want a better API for doing
-          # this stuff without inserting transport layer specific manipulations
-          # into the core of the code.
-          if iq.sub_type == LM::MessageSubType::SET
-            error_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
-            error_iq.node['type'] = 'error'
-            error_iq.node.set_attribute("id", iq.node.get_attribute("id"))
-            error_iq.node.set_attribute('xml:lang','en')
-            
-            error_iq.node.raw_mode = true
-            error_iq.node.value = iq.node.child
-            error_iq.node.add_child('error')
-            error_iq.node.child['code'] = '400'
-            error_iq.node.child['type'] = 'modify'
-            error_iq.node.child.add_child('bad-request')
-            error_iq.node.child.child['xmlns'] = 'urn:ietf:params:xml:ns:xmpp-stanzas'
-            @conn.send(error_iq)
-            logger.debug("Sending error: #{error_iq.node}")
-          end
-        end
+        error_iq.node.raw_mode = true
+        error_iq.node.value = iq.node.child
+        error_iq.node.add_child('error')
+        error_iq.node.child['code'] = '400'
+        error_iq.node.child['type'] = 'modify'
+        error_iq.node.child.add_child('bad-request')
+        error_iq.node.child.child['xmlns'] = 'urn:ietf:params:xml:ns:xmpp-stanzas'
+        @conn.send(error_iq)
+        logger.debug("Sending error: #{error_iq.node}")
       end
     end
 
