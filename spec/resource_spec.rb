@@ -70,4 +70,12 @@ describe 'Vertebra Resource' do
     (Resource.new('/foo') <=> Resource.new('/foo')).should == 0
     (Resource.new('/foo') <=> Resource.new('/foo/bar')).should == 1
   end
+
+  it 'has a first part' do
+    Resource.new('/foo/bar').first.should == "foo"
+  end
+
+  it 'has a last part' do
+    Resource.new('/foo/bar/baz').last.should == "baz"
+  end
 end

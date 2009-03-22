@@ -45,26 +45,41 @@ module Vertebra
         @agent = agent
         @state = :new
         @final_countdown = 0
+        @iq = iq
 
         receiver = Vertebra::Synapse.new
         receiver.callback do
-          receive_request(iq)
+          receive_request
         end
         logger.debug "enqueue receiver"
         @agent.do_or_enqueue_synapse(receiver)
       end
 
-      def receive_request(iq)
-        logger.debug "Server#receive_request#{iq}"
-        @iq = iq
-        @op = op = iq.node.find_child('op')
+      def from
+        @iq.node.get_attribute("from")
+      end
+
+      def to
+        @iq.node.get_attribute("to")
+      end
+
+      def op
+        @iq.node.get_child('op')
+      end
+
+      def operation
+        @operation ||= Struct.new(:from).new(from)
+      end
+
+      def receive_request
+        logger.debug "Server#receive_request: #{@iq}"
         self.token = op.get_attribute('token').split(':').last << ":#{Vertebra.gen_token}"
         op.set_attribute("token", token)
         @agent.servers[token] = self
 
-        result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
+        result_iq = LM::Message.new(from, LM::MessageType::IQ)
         result_iq.node.raw_mode = true
-        result_iq.node.set_attribute("id", iq.root_node.get_attribute("id"))
+        result_iq.node.set_attribute("id", @iq.root_node.get_attribute("id"))
         result_iq.root_node.set_attribute('type', 'result')
         result_iq.node.value = op
         responder = Vertebra::Synapse.new
@@ -73,14 +88,17 @@ module Vertebra
           @last_message_sent = result_iq
           @agent.send_iq(result_iq)
           @state = :verify
-          process_authorization
+          if @agent.opts[:herault_jid]
+            process_authorization
+          else
+            process_authorized
+          end
         end
         @agent.do_or_enqueue_synapse(responder)
       end
 
       def process_authorization
         logger.debug "Server#process_authorization"
-        op = @iq.node.get_child('op')
         rexml_op = REXML::Document.new(op.to_s).root
         res = {}
 
@@ -88,8 +106,8 @@ module Vertebra
           next if el.is_a?(REXML::Text)
           res[el.text] = el.text if el.name == 'res'
         end
-        res['from'] = @iq.node.get_attribute("from").to_s
-        res['to'] = @iq.node.get_attribute("to").to_s
+        res['from'] = from
+        res['to'] = to
 
         @agent.request('/security/authorize', :direct, res, [@agent.herault_jid]) do |results|
           if results['response'] == 'authorized'
@@ -102,7 +120,7 @@ module Vertebra
 
       def process_authorized
         logger.debug "Server#process_authorized"
-        iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+        iq = LM::Message.new(from, LM::MessageType::IQ)
         iq.root_node.set_attribute('type', 'set')
         ack = Vertebra::Ack.new(token)
         iq.node.raw_mode = true
@@ -119,7 +137,7 @@ module Vertebra
 
       def process_not_authorized
         logger.debug "Server#process_not_authorized"
-        iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+        iq = LM::Message.new(from, LM::MessageType::IQ)
         iq.root_node.set_attribute('type', 'set')
         nack = Vertebra::Nack.new(token)
         iq.node.raw_mode = true
@@ -152,17 +170,17 @@ module Vertebra
 
           error = false
 
-          logger.debug "handling #{@op}"
+          logger.debug "handling #{op}"
           ops_bucket = nil
 
           begin
-            ops_bucket = @agent.dispatcher.handle(@op)
+            ops_bucket = @agent.dispatcher.handle(operation, op)
           rescue Exception => e
             notifier = Vertebra::Synapse.new
             notifier.condition { @agent.connection_is_open_and_authenticated? }
 
-            result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
-            logger.error "operation FAILED #{@op}: #{e.class}: #{e.message}"
+            result_iq = LM::Message.new(from, LM::MessageType::IQ)
+            logger.error "operation FAILED #{op}: #{e.class}: #{e.message}"
             logger.debug e.backtrace.inspect
             error_tag = Vertebra::Error.new(token)
             Vertebra::Marshal.encode(:error => e).children.each do |child|
@@ -183,7 +201,7 @@ module Vertebra
             bucket_handler.callback do
               result_iqs = []
               ops_bucket[:results].each do |result|
-                result_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+                result_iq = LM::Message.new(from, LM::MessageType::IQ)
                 result_iq.root_node.set_attribute('type', 'set')
 
 
@@ -231,7 +249,7 @@ module Vertebra
 
         if @final_countdown <= 0 && @state != :flush
           @state = :flush
-          final_iq = LM::Message.new(@iq.node.get_attribute("from"), LM::MessageType::IQ)
+          final_iq = LM::Message.new(from, LM::MessageType::IQ)
           final_iq.root_node.set_attribute('type', 'set')
           final_iq.node.raw_mode = true
           final_tag = ::Vertebra::Final.new(token)
@@ -251,7 +269,7 @@ module Vertebra
       end
 
       def process_terminate
-        logger.error "terminating op!:#{@op}"
+        logger.error "terminating op!: #{op}"
         :terminated
       end
 

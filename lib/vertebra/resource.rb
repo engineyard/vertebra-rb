@@ -19,7 +19,7 @@ module Vertebra
 
   class Resource
 
-    attr_reader :res
+    attr_reader :parts
 
     def self.parse_hostname(hostname)
       return false if hostname.nil?
@@ -32,9 +32,21 @@ module Vertebra
       when 'n'; "node"
       when 'gw'; "gateway"
       end
-      resource_number = matchdata[4].to_i
+      resource_number = matchdata[4].to_iparts
 
       [new('/cluster/'+cluster_name), new("/#{resource_type}/#{resource_number}")]
+    end
+
+    def first
+      @parts.first
+    end
+
+    def last
+      @parts.last
+    end
+
+    def size
+      (@parts || []).size
     end
 
     def eql?(other)
@@ -46,15 +58,15 @@ module Vertebra
     end
 
     def ==(other)
-      @res == other.res
+      @parts == other.parts
     end
 
     def <=(other)
-      @res[0, other.res.size] == other.res
+      @parts[0, other.size] == other.parts
     end
 
     def >=(other)
-      @res == other.res[0, @res.size]
+      @parts == other.parts[0, size]
     end
 
     def <(other)
@@ -62,7 +74,7 @@ module Vertebra
     end
 
     def >(other)
-       not self <= other
+      not self <= other
     end
 
     def <=>(other)
@@ -71,14 +83,18 @@ module Vertebra
       else 0 end
     end
 
-    def initialize(res)
-      res_string = res.to_s # This lets one pass a Vertebra::Resource in, and get a copy of it instead of an error.
-      raise ArgumentError.new("resources *must* start with a / (#{res_string.inspect})") unless res_string[0] == ?/
-      @res = res_string[1..-1].split('/')
+    def [](index)
+      @parts[index]
+    end
+
+    def initialize(resource)
+      res_string = resource.to_s # This lets one pass a Vertebra::Resource in, and get a copy of it instead of an error.
+      raise ArgumentError, "#{res_string.inspect} does not start with a / ()" unless res_string[0] == ?/
+      @parts = res_string[1..-1].split('/')
     end
 
     def to_s
-      "/#{@res.join('/')}"
+      ["", @parts].join('/')
     end
 
   end

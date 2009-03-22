@@ -118,14 +118,14 @@ module Vertebra
 
       resources = Vertebra::Utils.resources_hash_from_args(@type, @args)
 
-      logger.debug "DISCOVERING: #{@type.inspect}, #{resources.inspect} on #{@herault_jid}"
+      logger.debug "DISCOVERING: #{resources.inspect} on #{@herault_jid}"
       client = raw_op('/security/discover', @agent.herault_jid, resources)
       requestor = Vertebra::Synapse.new
       requestor.condition do
         client.done? ? :succeeded : :deferred
       end
       requestor.callback do
-        yield client.results['jids']
+        yield client.results['response']['jids']
       end
       @agent.enqueue_synapse(requestor)
     end

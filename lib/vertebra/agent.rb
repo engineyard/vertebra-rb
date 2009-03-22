@@ -44,16 +44,15 @@ module Vertebra
     attr_reader :jid
 
     attr_accessor :dispatcher, :herault_jid, :clients, :servers, :conn, :deja_vu_map
-    attr_reader :ttl
+    attr_reader :ttl, :opts
 
     def initialize(jid, password, opts = {})
-      @opts = opts
+      default_opts = {:herault_jid => 'herault@localhost/herault'}
+      @opts = default_opts.merge(opts)
 
       raise(ArgumentError, "Please provide at least a Jabber ID and password") if !jid || !password
 
       @drb_port = @opts[:drb_port]
-
-      #Jabber.debug = @opts[:jabber_debug] || false
 
       add_include_path(@opts[:actor_path]) if @opts[:actor_path]
       add_include_path(File.dirname(__FILE__) + "/../../spec/mocks") if @opts[:test_mode]
@@ -73,8 +72,8 @@ module Vertebra
       @synapse_queue = Vertebra::SynapseQueue.new
 
       @advertise_timer_started = false
-      @herault_jid = opts[:herault_jid] || 'herault@localhost/herault'
-      @ttl = opts[:ttl] || 3600 # Default TTL for advertised resources is 3600 seconds.
+      @herault_jid = @opts[:herault_jid]
+      @ttl = @opts[:ttl] || 3600 # Default TTL for advertised resources is 3600 seconds.
 
       @conn = LM::EventedConnection.new
       @conn.jid = @jid.to_s
@@ -86,14 +85,14 @@ module Vertebra
 
       set_callbacks
 
-      @dispatcher = ::Vertebra::Dispatcher.new(self, opts[:default_resources])
+      @dispatcher = ::Vertebra::Dispatcher.new(self, @opts[:default_resources])
 
       @clients, @servers = {},{}
 
       @show_synapses = false
 
       # register actors specified in the config
-      @dispatcher.register(opts[:actors]) if opts[:actors]
+      @dispatcher.register(@opts[:actors]) if @opts[:actors]
     end
 
     def stop
@@ -118,7 +117,9 @@ module Vertebra
       EM.add_periodic_timer(2) { monitor_connection_status }
       EM.add_periodic_timer(8) { GC.start }
       EM.add_timer(0.001) { connect } # Try to connect immediately after startup.
-      EM.add_timer(1) { advertise_resources } # run once, a second after startup.
+      if @herault_jid
+        EM.add_timer(1) { advertise_resources } # run once, a second after startup.
+      end
     end
 
     def limited_timer_quantum(q)

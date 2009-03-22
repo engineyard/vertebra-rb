@@ -59,12 +59,12 @@ module Vertebra
 
     def candidates(type, args)
       logger.debug "in candidates (#{type}) -- args: #{args.inspect}"
-      resources = Vertebra::Utils.resources_hash_from_args(type, args)
+      resources = Vertebra::Utils.find_resources(args)
 
       logger.debug "RESOURCES: #{resources.inspect}"
 
       actors.select do |actor|
-        actor.can_provide?(resources.values) && actor.op_path_resources.any? {|r| type >= r }
+        actor.can_provide?([type] + resources) && actor.op_path_resources.any? {|r| type >= r }
       end
     end
 
@@ -74,7 +74,7 @@ module Vertebra
     # response will be yielded and the boolean flag is used to mean 'this
     # is the last result'. If no actors can service the operation, we return
     # a <nil> result marked as final.
-    def handle(op)
+    def handle(operation, op)
       logger.debug "Dispatcher handling #{op}"
       elt = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(elt)
@@ -87,7 +87,7 @@ module Vertebra
       dispatched_ops = []
 
       actors.each do |actor|
-        dispatched_ops << actor.handle_op(op.attributes['type'], scope, args)
+        dispatched_ops << actor.handle_op(operation, op.attributes['type'], scope, args)
       end
 
       ops_bucket = Vertebra::Synapse.new
