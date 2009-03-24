@@ -49,7 +49,7 @@ module Vertebra
       path = File.expand_path(filename)
       if File.readable? path
         options = YAML.load(File.read(path))
-        keys_to_symbols(options)
+        Vertebra::Utils.keys_to_symbols(options)
       else
         {}
       end
