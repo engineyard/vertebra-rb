@@ -29,6 +29,8 @@ module Vertebra
             client.process_data_or_final(iq, :final, child_node)
           end
           agent.enqueue_synapse(final_handler)
+        else
+          logger.warn "No client found with token: #{token.inspect}"
         end
       end
 
