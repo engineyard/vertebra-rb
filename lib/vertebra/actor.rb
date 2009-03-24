@@ -74,7 +74,7 @@ module Vertebra
 
       def bind_op(resource, method_name)
         key = Vertebra::Resource.new(resource.to_s)
-        provides "/#{key.res.first}"
+        provides "/#{key.first}"
         (@op_table ||= Hash.new {|h,k| h[k] = []})[key] << method_name
       end
 
@@ -111,7 +111,7 @@ module Vertebra
     # Also, there are probably some error handling cases that need better
     # testing.
 
-    def handle_op(op_type, scope, args)
+    def handle_op(operation, op_type, scope, args)
       resource = Vertebra::Resource.new(op_type.to_s)
       method_names = self.class.lookup_op(resource)
       raise NoMethodError unless method_names
@@ -141,7 +141,7 @@ module Vertebra
 
             if method_name && method_result == :no_result
               begin
-                method_result = self.send(method_name, args)
+                method_result = self.send(method_name, operation, args)
               rescue Exception => e
                 method_name = nil
                 method_result = :no_result
@@ -169,7 +169,7 @@ module Vertebra
       else
         method_iterator.condition do
           method_names.each do |method_name|
-            method_result = self.send(method_name, args)
+            method_result = self.send(method_name, operation, args)
             r << method_result
             @agent.enqueue_synapse(method_result) if Vertebra::Synapse === method_result
           end
