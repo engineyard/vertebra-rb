@@ -32,7 +32,7 @@ module Vertebra
         discoverer = Vertebra::Synapse.new
         discoverer.callback do
           discover do |jids|
-            if jids.empty?
+            if jids.nil? || jids.empty?
               discoverer[:results] = []
             elsif @scope == :all
               gather(discoverer, jids)
