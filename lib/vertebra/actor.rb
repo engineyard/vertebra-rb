@@ -169,7 +169,12 @@ module Vertebra
       else
         method_iterator.condition do
           method_names.each do |method_name|
-            method_result = self.send(method_name, operation, args)
+            if self.method(method_name).arity > 1
+              method_result = self.send(method_name, operation, args)
+            else
+              method_result = self.send(method_name, args)
+            end
+            
             r << method_result
             @agent.enqueue_synapse(method_result) if Vertebra::Synapse === method_result
           end
