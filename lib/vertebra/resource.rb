@@ -57,16 +57,28 @@ module Vertebra
       to_s.hash
     end
 
+    # The assumptions in these comparisons are:
+    #   1) shorter resources are greater than longer resources
+    #   2) resources of equal length are compared lexigraphically
+    
     def ==(other)
       @parts == other.parts
     end
 
     def <=(other)
-      @parts[0, other.size] == other.parts
+      if @parts.size == other.parts.size
+        (@parts <=> other.parts) < 1 ? true : false # @parts <= other.parts
+      else
+        @parts.size > other.parts.size
+      end 
     end
 
     def >=(other)
-      @parts == other.parts[0, size]
+      if @parts.size == other.parts.size
+        (@parts <=> other.parts) > -1 ? true : false # @parts >= other.parts
+      else
+        @parts.size < other.parts.size
+      end
     end
 
     def <(other)
