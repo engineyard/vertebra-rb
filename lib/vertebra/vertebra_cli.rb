@@ -49,7 +49,7 @@ module Vertebra
       path = File.expand_path(filename)
       if File.readable? path
         options = YAML.load(File.read(path))
-        keys_to_symbols(options)
+        Vertebra::Utils.keys_to_symbols(options)
       else
         {}
       end
@@ -62,7 +62,8 @@ module Vertebra
         init_options(opts)
         add_options(opts, options)
       end.parse!(argv)
-      parse_args(argv, options)
+      options[:op_type] = parse_op(argv)
+      options[:op_args] = parse_args(argv)
       options
     end
 
@@ -139,18 +140,20 @@ module Vertebra
       end
     end
 
-    def parse_args(argv, options)
-      options[:type] = argv.shift
+    def parse_op(argv)
+      argv.shift
+    end
 
-      op_args = {}
+    def parse_args(argv)
+      result = {}
       argv.each do |arg|
         if arg =~ /^([^=]+)=(.+)$/
           key, value = $1, $2
           case value
           when /^string:(.+)$/
-            op_args[key] = $1
+            result[key] = $1
           when /^res:(.+)$/
-            op_args[key] = Vertebra::Resource.new($1)
+            result[key] = Vertebra::Resource.new($1)
           else
             raise ArgumentError, "The value #{value.inspect} does not have a valid prefix"
           end
@@ -158,7 +161,7 @@ module Vertebra
           raise ArgumentError, "The arg should be in the form: 'key=prefix:value'"
         end
       end
-      options[:op_args] = op_args
+      result
     end
 
     def dispatch_request
@@ -166,11 +169,11 @@ module Vertebra
       agent = Vertebra::Agent.new(@jid, @password, @options)
 
       EM.next_tick do
-        puts "Making #{@options[:iterations]} request#{@options[:iterations] > 1 ? 's' : ''} for #{@type} #{@scope} #{@op_args.inspect}" if @verbose
+        puts "Making #{@options[:iterations]} request#{@options[:iterations] > 1 ? 's' : ''} for #{@op_type} #{@scope} #{@op_args.inspect}" if @verbose
         rq = 0
         @options[:iterations].times do
           rq += 1
-          agent.request(@type, @scope, @op_args) do |results|
+          agent.request(@op_type, @scope, @op_args) do |results|
             show_results(results)
             rq -= 1
 
@@ -180,7 +183,6 @@ module Vertebra
           end
         end
       end
-
       agent.start
     end
 
@@ -198,7 +200,7 @@ module Vertebra
       @options = file_options.merge cli_options
       Vertebra::disable_logging unless @options.delete :enable_logging
       ## TODO: Fix this so that we don't assign an asston of fields.
-      [:jid, :type, :op_args,
+      [:jid, :op_type, :op_args,
        :password, :scope, :verbose, :yaml].each do |option|
         instance_variable_set("@#{option}", @options.delete(option))
       end
