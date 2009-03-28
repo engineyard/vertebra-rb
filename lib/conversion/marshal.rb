@@ -74,7 +74,7 @@ module Vertebra
           el.text = value
           el
 
-        when Array
+        when Array, Set
           el = Element.new("list")
           el.attributes['name'] = name.to_s  unless name.nil?
           value.each{|v| el << encode_pair(nil, v)}

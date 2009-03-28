@@ -24,7 +24,7 @@ module Vertebra
     def initialize(agent, resources = [])
       @agent = agent
       @actors = []
-      @default_resources = resources.map { |res| Vertebra::Resource.new(res) } if resources
+      @default_resources = resources.map { |res| Vertebra::Resource.parse(res) } if resources
     end
 
     def register(actors)
@@ -78,7 +78,7 @@ module Vertebra
       logger.debug "Dispatcher handling #{op}"
       elt = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(elt)
-      actors = candidates(Resource.new(op['type']), args)
+      actors = candidates(Resource.parse(op['type']), args)
       scope = elt.attributes.key?('scope') ? elt.attributes['scope'].to_sym : :all
       logger.debug "SCOPE: #{scope.inspect}"
 

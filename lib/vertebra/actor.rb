@@ -73,7 +73,7 @@ module Vertebra
       attr_accessor :provided_resources
 
       def bind_op(resource, method_name)
-        key = Vertebra::Resource.new(resource.to_s)
+        key = Vertebra::Resource.parse(resource.to_s)
         provides "/#{key.first}"
         (@op_table ||= Hash.new {|h,k| h[k] = []})[key] << method_name
       end
@@ -87,7 +87,7 @@ module Vertebra
       end
 
       def provides(*resources)
-        (@provided_resources ||= []) << resources.collect { |r| Vertebra::Resource.new(r) }
+        (@provided_resources ||= []) << resources.collect { |r| Vertebra::Resource.parse(r) }
         @provided_resources.flatten!
         @provided_resources.uniq!
       end
@@ -112,7 +112,7 @@ module Vertebra
     # testing.
 
     def handle_op(operation, op_type, scope, args)
-      resource = Vertebra::Resource.new(op_type.to_s)
+      resource = Resource.parse(op_type.to_s)
       method_names = self.class.lookup_op(resource)
       raise NoMethodError unless method_names
 

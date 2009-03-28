@@ -27,7 +27,7 @@ describe Vertebra::Actors::Core do
   end
   
   it 'should provide /core resource' do
-    @actor.provides.should == [Vertebra::Resource.new('/core')]
+    @actor.provides.should == [Vertebra::Resource.parse('/core')]
   end
 
   it 'should exit process in quit method' do
