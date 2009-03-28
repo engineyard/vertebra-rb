@@ -16,50 +16,14 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 $TESTING = true
-$:.push File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'rubygems'
 require 'pp'
 require 'drb'
 require 'yaml'
-require 'vertebra/extensions'
 require 'rr'
-
-if defined?(Bacon)
-  module Bacon
-    class Context
-      def raise_error(exc); lambda { |block| begin block.call; rescue exc; true; else false; end } end
-      def be_a_kind_of(x); lambda { |y| y.kind_of? x }; end
-      alias_method :bacon_before, :before
-      alias_method :bacon_after, :after
-
-      def before(option = nil, &block)
-        if option == :all
-          block.call
-        else
-          bacon_before(&block)
-        end
-      end
-
-      def after(option = nil, &block)
-        if option == :all
-          at_exit { (block.call) }
-        else
-          bacon_after(&block)
-        end
-      end
-
-      def be(arg); lambda { |other| other == arg }; end
-      def be_true(arg); lambda { |x| x }; end
-    end
-
-    class Object
-      def should_not(test); should(lambda { |x| not test.call(x) }); end
-    end
-  end
-else
-  require 'spec'
-end
+require 'spec'
+require File.dirname(__FILE__) + '/../lib/vertebra'
 
 def yaml(file)
   YAML.load(File.read(File.dirname(__FILE__)+"/config/#{file}.yml")).symbolize_keys
