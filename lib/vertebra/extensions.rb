@@ -58,7 +58,7 @@ module Vertebra
     end
 
     def resources_hash_from_args(type, args)
-      data = {"resources" => {"type" => type, "args" => []}}
+      data = {"resources" => {"type" => type, "args" => {}}}
       args.each do |key,value|
         data["resources"]["args"][key] = value if value.is_a?(Resource)
       end
