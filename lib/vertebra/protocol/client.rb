@@ -76,10 +76,7 @@ module Vertebra
 
         @outcall.add_client(@token, self)
 
-        initiator.condition { @outcall.defer_on_busy_jid?(@to) }
         initiator.callback do
-          logger.debug("setting busy jid #{@to}")
-          @outcall.set_busy_jid(@to,self)
           @last_message_sent = iq
           @outcall.send_iq(iq)
         end
@@ -168,9 +165,6 @@ module Vertebra
           logger.debug "Client#process_data_or_final: sending #{result_iq.node}"
           @last_message_sent = result_iq
           @outcall.send_iq(result_iq)
-          if [:final, :error].include?(stanza_type)
-            @outcall.remove_busy_jid(@to,self)
-          end
         end
 
         @outcall.do_or_enqueue_synapse(response)

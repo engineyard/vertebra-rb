@@ -63,7 +63,7 @@ module Vertebra
 
       @idle_ticks = 0
       @idle_threshold = SLOW_TIMER_FREQUENCY / FAST_TIMER_FREQUENCY
-      @busy_jids = {}
+      
       @pending_clients = []
       @active_clients = []
       @connection_in_progress = false
@@ -113,7 +113,6 @@ module Vertebra
     def install_periodic_actions
       @fast_synapse_timer = EM::PeriodicTimer.new(FAST_TIMER_FREQUENCY / 1000) { synapse_timer_block }
       EM.set_timer_quantum(5)
-      EM.add_periodic_timer(1) { clear_busy_jids }
       EM.add_periodic_timer(2) { monitor_connection_status }
       EM.add_periodic_timer(8) { GC.start }
       EM.add_timer(0.001) { connect } # Try to connect immediately after startup.
@@ -256,36 +255,6 @@ module Vertebra
         logger.debug "Authenticated"
       end
       enqueue_synapse(auth_finalizer)
-    end
-
-    def defer_on_busy_jid?(jid)
-      @busy_jids.has_key?(jid) ? :deferred : :succeeded
-    end
-
-    def set_busy_jid(jid,client)
-      @busy_jids[jid] = client
-    end
-
-    def remove_busy_jid(jid, client)
-      if locking_client = @busy_jids[jid]
-        if locking_client == client
-          @busy_jids.delete(jid)
-        else
-          raise "Busy JID Client mismatch for #{jid.inspect}, offending client is #{client.inspect}"
-        end
-      else
-        # raise "Busy JID Client not found for #{jid.inspect}, offending client is #{client.inspect}"
-      end
-    end
-
-    def clear_busy_jids
-      # Busy jids _should_ be cleared by the protocol, but just in case, a
-      # timer will run this periodically to catch anything that might somehow
-      # be missed.  TODO: Prove this is unnecessary paranoia.
-
-      @busy_jids.each do |jid, client|
-        @busy_jids.delete(jid) if client.done?
-      end
     end
 
     def set_callbacks

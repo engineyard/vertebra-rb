@@ -160,18 +160,6 @@ module Vertebra
       @agent.connection_is_open_and_authenticated?(*args)
     end
 
-    def defer_on_busy_jid?(*args)
-      @agent.defer_on_busy_jid?(*args)
-    end
-
-    def set_busy_jid(*args)
-      @agent.set_busy_jid(*args)
-    end
-
-    def remove_busy_jid(*args)
-      @agent.remove_busy_jid(*args)
-    end
-
     def send_iq(*args)
       @agent.send_iq(*args)
     end
