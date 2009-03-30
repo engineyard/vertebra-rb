@@ -16,66 +16,67 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/spec_helper'
-require 'vertebra/resource'
-
-include Vertebra
 
 describe 'Vertebra Resource' do
+  include Vertebra::Utils
 
   it 'should be equal if input is equal' do
-    Resource.new('/').should == Resource.new('/')
-    Resource.new('/foo').should == Resource.new('/foo')
-    Resource.new('/foo/bar').should == Resource.new('/foo/bar')
+    resource('/').should == resource('/')
+    resource('/foo').should == resource('/foo')
+    resource('/foo/bar').should == resource('/foo/bar')
   end
 
   it '/ should be >= /foo' do
-    (Resource.new('/') >= Resource.new('/foo')).should be_true
-    (Resource.new('/bar') >= Resource.new('/foo')).should be_false
+    resource('/').should >= resource('/foo')
+    resource('/bar').should_not >= resource('/foo')
   end
 
   it '/foo/ should be <= /' do
-    (Resource.new('/foo') <= Resource.new('/')).should be_true
-    (Resource.new('/foo') <= Resource.new('/foo')).should be_true
-    (Resource.new('/foo') <= Resource.new('/bar')).should be_false
+    resource('/foo').should <= resource('/')
+    resource('/foo').should <= resource('/foo')
+    resource('/foo').should_not <= resource('/bar')
   end
 
   it '/foo should be >= /foo/bar' do
-    (Resource.new('/foo') >= Resource.new('/foo/bar')).should be_true
-    (Resource.new('/foo/bar') >= Resource.new('/foo/bar')).should be_true
-    (Resource.new('/bar/foo') >= Resource.new('/foo/bar')).should be_false
+    resource('/foo').should >= resource('/foo/bar')
+    resource('/foo/bar').should >= resource('/foo/bar')
+    resource('/bar/foo').should_not >= resource('/foo/bar')
   end
 
   it '/foo/bar should be <= /foo' do
-    (Resource.new('/foo/bar') <= Resource.new('/foo')).should be_true
-    (Resource.new('/foo/bar') <= Resource.new('/foo/bar')).should be_true
-    (Resource.new('/foo/bar') <= Resource.new('/bar/foo')).should be_false
+    resource('/foo/bar').should <= resource('/foo')
+    resource('/foo/bar').should <= resource('/foo/bar')
+    resource('/foo/bar').should_not <= resource('/bar/foo')
   end
 
   it "should be uniq" do
-    [Resource.new('/foo'),Resource.new('/foo')].uniq.size.should == 1
+    [resource('/foo'),resource('/foo')].uniq.should have(1).entries
   end
 
-  it "/foo should be > /foo/bar" do
-    (Resource.new('/foo') > Resource.new('/foo/bar')).should be_true
-    (Resource.new('/foo/bar') > Resource.new('/foo/bar')).should be_false
+  it "supports > comparisons" do
+    resource('/foo').should > resource('/foo/bar')
+    resource('/foo/bar').should_not > resource('/foo/bar')
+    resource('/foo').should_not > resource('/bar')
   end
 
-  it '/foo/bar should be < /foo' do
-    (Resource.new('/foo/bar') < Resource.new('/foo')).should be_true
-    (Resource.new('/foo/bar') < Resource.new('/foo/bar')).should be_false
+  it 'supports < comparisons' do
+    resource('/foo/bar').should < resource('/foo')
+    resource('/foo/bar/baz').should < resource('/foo')
+    resource('/foo/bar/baz').should < resource('/')
+    resource('/foo/bar').should_not < resource('/foo/bar')
   end
 
   it 'it should compare' do
-    (Resource.new('/foo/bar') <=> Resource.new('/foo')).should == -1
-    (Resource.new('/foo') <=> Resource.new('/foo')).should == 0
-    (Resource.new('/foo') <=> Resource.new('/foo/bar')).should == 1
+    (resource('/foo/bar') <=> resource('/foo')).should == -1
+    (resource('/foo') <=> resource('/foo')).should == 0
+    (resource('/foo') <=> resource('/foo/bar')).should == 1
   end
 
   it 'has a first part' do
-    Resource.new('/foo/bar').first.should == "foo"
+    resource('/foo/bar').first.should == "foo"
   end
 
   it 'has a last part' do
-    Resource.new('/foo/bar/baz').last.should == "baz"
+    resource('/foo/bar/baz').last.should == "baz"
   end
 end

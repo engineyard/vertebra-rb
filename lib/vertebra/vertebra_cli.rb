@@ -153,7 +153,7 @@ module Vertebra
           when /^string:(.+)$/
             result[key] = $1
           when /^res:(.+)$/
-            result[key] = Vertebra::Resource.new($1)
+            result[key] = Resource.parse($1)
           else
             raise ArgumentError, "The value #{value.inspect} does not have a valid prefix"
           end

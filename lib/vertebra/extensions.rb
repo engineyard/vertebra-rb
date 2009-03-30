@@ -54,7 +54,7 @@ module Vertebra
     end
 
     def resource(text)
-      Resource.new(text)
+      Resource.parse(text)
     end
 
     def resources_hash_from_args(type, args)

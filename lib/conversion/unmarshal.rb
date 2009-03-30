@@ -100,7 +100,7 @@ module Vertebra
       end
 
       def resource(res)
-        ::Vertebra::Resource.new(res)
+        ::Vertebra::Resource.parse(res)
       end
 
       def dateTime(str)
