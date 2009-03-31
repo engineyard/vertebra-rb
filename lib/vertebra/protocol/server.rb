@@ -78,10 +78,12 @@ module Vertebra
         @agent.servers[token] = self
 
         result_iq = LM::Message.new(from, LM::MessageType::IQ)
-        result_iq.node.raw_mode = true
+        result_iq.node.raw_mode = false
         result_iq.node.set_attribute("id", @iq.root_node.get_attribute("id"))
         result_iq.root_node.set_attribute('type', 'result')
-        result_iq.node.value = op
+        #result_iq.node.value = op
+        result_iq.node.add_child op.name
+        result_iq.node.child.set_attribute("token", token)
         responder = Vertebra::Synapse.new
         responder.condition { @agent.connection_is_open_and_authenticated? }
         responder.callback do

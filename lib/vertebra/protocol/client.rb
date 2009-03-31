@@ -114,10 +114,11 @@ module Vertebra
         end
 
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
-        result_iq.node.raw_mode = true
+        result_iq.node.raw_mode = false
         result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
         result_iq.node.set_attribute('xml:lang','en')
-        result_iq.node.value = stanza
+        result_iq.node.add_child stanza.name
+        result_iq.node.child.set_attribute("token", stanza.get_attribute("token"))
         result_iq.root_node.set_attribute('type', 'result')
 
         response = Vertebra::Synapse.new
@@ -153,9 +154,11 @@ module Vertebra
         end
 
         result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
-        result_iq.node.raw_mode = true
+        result_iq.node.raw_mode = false
         result_iq.node.set_attribute('id', iq.node.get_attribute('id'))
-        result_iq.node.value = stanza
+        result_iq.node.add_child stanza.name
+        result_iq.node.child.set_attribute("token", stanza.get_attribute("token"))
+
         result_iq.node.set_attribute('xml:lang','en')
         result_iq.node.set_attribute('type', 'result')
         response = Vertebra::Synapse.new

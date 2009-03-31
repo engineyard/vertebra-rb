@@ -328,7 +328,7 @@ module Vertebra
     end
 
     def handle_iq(iq)
-      logger.debug "handle_iq: #{iq.node}"
+      logger.debug "handle_iq #{Time.now.to_f}: #{iq.node}"
 
       handle_duplicates(iq)
       if iq.sub_type == LM::MessageSubType::ERROR
