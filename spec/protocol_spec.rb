@@ -76,14 +76,6 @@ describe Vertebra::Protocol::Client do
     @synapses.first.should == synapse
   end
 
-  it 'Should defer if there is another IQ in progress to the same jid' do
-    synapse = @synapses.first
-
-    @agent.def(:defer_on_busy_jid?) {|jid| :deferred}
-    @synapses.fire
-    @synapses.first.should == synapse
-  end
-
   it 'Should send an IQ' do
     synapse = @synapses.first
 
