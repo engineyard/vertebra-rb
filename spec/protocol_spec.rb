@@ -46,12 +46,9 @@ describe Vertebra::Protocol::Client do
     @synapses = synapses = Vertebra::SynapseQueue.new
     @agent = Mock.new do |mock|
       mock.def(:connection_is_open_and_authenticated?) {true}
-      mock.def(:defer_on_busy_jid?) {|jid| true}
       mock.def(:jid) {AGENT_JID}
-      mock.def(:remove_busy_jid) {|jid, client| }
       mock.def(:remove_client) {|token| }
       mock.def(:send_iq) {|iq| }
-      mock.def(:set_busy_jid) {|jid, client| }
       mock.def(:add_client) {|token, client| }
       mock.def(:enqueue_synapse) {|synapse| synapses << synapse}
       mock.def(:do_or_enqueue_synapse) {|synapse| synapses << synapse}

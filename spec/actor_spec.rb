@@ -73,7 +73,7 @@ EOC
 
   it 'should populate the provided resources from bound ops, automatically' do
     auto_dummy = AutoDummyActor.new
-    auto_dummy.provides.should == ['/mock','/mockery'].collect {|r| resource(r)}
+    auto_dummy.provides.should == ['/mock/num','/mockery/taunt'].collect {|r| resource(r)}
   end
 
   it 'should properly match top-level required resources with lower-level provided resources' do
@@ -94,7 +94,7 @@ EOC
 bind_op '/mockery/taunt', :taunt
 EOC
     d2 = dummy_too.new
-    d2.provides.should == ['/mock','/mock2','/mockery'].collect {|r| resource(r)}
+    d2.provides.should == ['/mock','/mock2','/mockery/taunt'].collect {|r| resource(r)}
   end
 
   it 'should generate correct output from the open4 spawn wrapper' do

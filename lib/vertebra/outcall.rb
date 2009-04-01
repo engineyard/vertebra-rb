@@ -125,7 +125,11 @@ module Vertebra
         client.done? ? :succeeded : :deferred
       end
       requestor.callback do
-        yield client.results['response']['jids']
+        unless client.results.empty?
+          yield client.results['response']['jids']
+        else
+          yield []
+        end
       end
       @agent.enqueue_synapse(requestor)
     end

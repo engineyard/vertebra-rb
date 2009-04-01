@@ -70,11 +70,13 @@ module Vertebra
   class Actor < Thor
 
     class << self
-      attr_accessor :provided_resources
+      def provided_resources
+        @provided_resources || []
+      end
 
       def bind_op(resource, method_name)
         key = Vertebra::Resource.parse(resource.to_s)
-        provides "/#{key.first}"
+        provides key
         (@op_table ||= Hash.new {|h,k| h[k] = []})[key] << method_name
       end
 
@@ -143,6 +145,8 @@ module Vertebra
               begin
                 method_result = self.send(method_name, operation, args)
               rescue Exception => e
+                logger.error "Got an exception: #{e.message}"
+                logger.debug e.backtrace
                 method_name = nil
                 method_result = :no_result
               else

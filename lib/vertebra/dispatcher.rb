@@ -64,7 +64,7 @@ module Vertebra
       logger.debug "RESOURCES: #{resources.inspect}"
 
       actors.select do |actor|
-        actor.can_provide?([type] + resources) && actor.op_path_resources.any? {|r| type >= r }
+        actor.can_provide?(resources) && actor.op_path_resources.any? {|r| type >= r }
       end
     end
 
@@ -79,6 +79,7 @@ module Vertebra
       elt = REXML::Document.new(op.to_s).root
       args = Vertebra::Marshal.decode(elt)
       actors = candidates(Resource.parse(op['type']), args)
+      logger.debug "Found #{actors.size} candidate actors"
       scope = elt.attributes.key?('scope') ? elt.attributes['scope'].to_sym : :all
       logger.debug "SCOPE: #{scope.inspect}"
 
