@@ -164,8 +164,9 @@ module Vertebra
       @agent.send_iq(*args)
     end
 
-    def deja_vu_map(*args)
-      @agent.deja_vu_map(*args)
+    def packet_memory(*args)
+      @agent.packet_memory(*args)
     end
+
   end
 end

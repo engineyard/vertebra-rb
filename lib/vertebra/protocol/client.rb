@@ -149,7 +149,7 @@ module Vertebra
         when :final
           @state = :commit
           logger.debug "DELETING TOKEN #{@token}"
-          @outcall.deja_vu_map.delete(@token)
+          @outcall.packet_memory.delete_by_token(@token)
           @outcall.remove_client(@token)
         end
 

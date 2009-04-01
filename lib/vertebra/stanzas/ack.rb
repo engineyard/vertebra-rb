@@ -20,7 +20,7 @@ module Vertebra
     class Ack < Stanza
       def handle_set
         if client = agent.clients[token]
-          agent.deja_vu_map[token][id] = iq
+          agent.packet_memory.set(to, token, id, iq)
           ack_handler = Vertebra::Synapse.new
           ack_handler[:client] = client
           ack_handler[:state] = :ack

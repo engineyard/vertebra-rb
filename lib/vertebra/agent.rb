@@ -19,6 +19,7 @@ require 'vertebra/dispatcher'
 require 'vertebra/actor'
 require 'vertebra/synapse'
 require 'vertebra/synapse_queue'
+require 'vertebra/packet_memory'
 
 begin
   #require 'ruby-growl'
@@ -43,7 +44,7 @@ module Vertebra
     attr_accessor :drb_port
     attr_reader :jid
 
-    attr_reader :dispatcher, :herault_jid, :clients, :servers, :conn, :deja_vu_map
+    attr_reader :dispatcher, :herault_jid, :clients, :servers, :conn, :packet_memory
     attr_reader :ttl, :opts
 
     def initialize(jid, password, opts = {})
@@ -68,7 +69,8 @@ module Vertebra
       @active_clients = []
       @connection_in_progress = false
       @authentication_in_progress = false
-      @deja_vu_map = Hash.new {|h1,k1| h1[k1] = {} }
+      #@deja_vu_map = Hash.new {|h1,k1| h1[k1] = {} }
+      @packet_memory = Vertebra::PacketMemory.new
       @synapse_queue = Vertebra::SynapseQueue.new
 
       @advertise_timer_started = false
@@ -359,12 +361,12 @@ module Vertebra
 
     def handle_duplicates(iq)
       # Handle Duplicates
-      # To do this, check the received stanza against the deja_vu_map.
+      # To do this, check the received stanza against the packet memory.
       #   match by token
       #     id
       token = parse_token(iq.node.child)
       iq_id = iq.node['id']
-      if duplicate = @deja_vu_map[token][iq_id]
+      if duplicate = @packet_memory.get_by_token_and_id(token,iq_id)
         # If there is a match, then we have seen it before in an existing
         # conversation.
         # If we have seen it before, then either:

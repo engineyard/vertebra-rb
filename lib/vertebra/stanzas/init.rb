@@ -19,7 +19,7 @@ module Vertebra
   module Stanzas
     class Init < Stanza
       def handle_set
-        agent.deja_vu_map[token][id] = iq
+        agent.packet_memory.set(to, token, id, iq)
         # The protocol object will take care of enqueing itself.
         logger.debug "Creating server protocol for token: #{token.inspect}"
         Vertebra::Protocol::Server.new(agent, iq)

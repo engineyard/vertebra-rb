@@ -190,7 +190,7 @@ module Vertebra
             end
             result_iq.root_node.set_attribute('type','error')
             result_iq.node.add_child error_tag
-            @agent.deja_vu_map.delete(@iq.node['token'])
+            @agent.packet_memory.delete_by_token(@iq.node['token'])
             logger.debug "SENDING ERROR: #{result_iq.node}"
           end
 
@@ -258,7 +258,7 @@ module Vertebra
           final_iq.node.add_child final_tag
           logger.debug "  Send Final"
           @agent.send_iq(final_iq)
-          @agent.deja_vu_map.delete(@iq.node['token'])
+          @agent.packet_memory.delete_by_token(@iq.node['token'])
         end
       end
 

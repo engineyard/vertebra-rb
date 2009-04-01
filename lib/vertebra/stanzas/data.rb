@@ -20,7 +20,7 @@ module Vertebra
     class Data < Stanza
       def handle_set
         if client = agent.clients[token]
-          agent.deja_vu_map[token][id] = iq
+          agent.packet_memory.set(to, token, id, iq)
           result_handler = Vertebra::Synapse.new
           result_handler[:client] = client
           result_handler[:state] = :result
