@@ -18,15 +18,16 @@
 require File.dirname(__FILE__) + '/spec_helper'
 require 'vertebra'
 require 'vertebra/agent'
+require 'vertebra/packet_memory'
 require 'vertebra/synapse_queue'
 
 # Specs to test the protocol portion of Vertebra.
 
 class Mock
-  attr_accessor :deja_vu_map
+  attr_accessor :packet_memory
 
   def initialize
-    @deja_vu_map = {}
+    @packet_memory = Vertebra::PacketMemory.new
     yield(self) if block_given?
   end
 
@@ -152,7 +153,7 @@ describe Vertebra::Protocol::Client do
     @client.state.should == :error
   end
 
-  it 'Should respond to an final when in the consume state' do
+  it 'Should respond to a final when in the consume state' do
     @synapses.clear
     @client.instance_eval { @state = :consume }
     do_stanza(:process_data_or_final, :final)
