@@ -65,7 +65,7 @@ module Vertebra
         iq = LM::Message.new(@to, LM::MessageType::IQ, LM::MessageSubType::SET)
         op = Vertebra::Init.new(@token, @type, @scope)
 
-        iq.node.set_attribute('xml:lang','en')
+        iq.node['xml:lang'] = 'en'
         iq.node.add_child(op)
         op_lm = iq.node.get_child(op.name)
 
@@ -73,7 +73,8 @@ module Vertebra
           op_lm.add_child el
         end
         logger.debug "CREATED IQ #{iq.node.to_s} with class #{iq.class}"
-
+        
+        @outcall.packet_memory.set(@to, @token, iq.node['id'], iq)
         @outcall.add_client(@token, self)
 
         initiator.callback do
@@ -113,13 +114,11 @@ module Vertebra
           @state = :authfail
         end
 
-        result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
+        result_iq = LM::Message.new(iq.node["from"], LM::MessageType::IQ)
         result_iq.node.raw_mode = false
-        result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
-        result_iq.node.set_attribute('xml:lang','en')
-        result_iq.node.add_child stanza.name
-        result_iq.node.child.set_attribute("token", stanza.get_attribute("token"))
-        result_iq.root_node.set_attribute('type', 'result')
+        result_iq.node["id"] = iq.node["id"]
+        result_iq.node['xml:lang'] = 'en'
+        result_iq.root_node['type'] = 'result'
 
         response = Vertebra::Synapse.new
         response[:name] = 'process_ack_or_nack response'
@@ -153,14 +152,11 @@ module Vertebra
           @outcall.remove_client(@token)
         end
 
-        result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ, LM::MessageSubType::RESULT)
+        result_iq = LM::Message.new(iq.node["from"], LM::MessageType::IQ, LM::MessageSubType::RESULT)
         result_iq.node.raw_mode = false
-        result_iq.node.set_attribute('id', iq.node.get_attribute('id'))
-        result_iq.node.add_child stanza.name
-        result_iq.node.child.set_attribute("token", stanza.get_attribute("token"))
-
-        result_iq.node.set_attribute('xml:lang','en')
-        result_iq.node.set_attribute('type', 'result')
+        result_iq.node['id'] = iq.node['id']
+        result_iq.node['xml:lang'] = 'en'
+        result_iq.node['type'] = 'result'
         response = Vertebra::Synapse.new
         response[:name] = 'process_data_or_final response'
         response.condition { @outcall.connection_is_open_and_authenticated? }

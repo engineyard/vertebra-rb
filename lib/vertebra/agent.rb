@@ -364,9 +364,10 @@ module Vertebra
       # To do this, check the received stanza against the packet memory.
       #   match by token
       #     id
-      token = parse_token(iq.node.child)
-      iq_id = iq.node['id']
-      if duplicate = @packet_memory.get_by_token_and_id(token,iq_id)
+      # token = parse_token(iq.node.child)
+      jid = iq.node['from']
+      id = iq.node['id']
+      if duplicate = @packet_memory.get_by_jid_and_id(jid,id)
         # If there is a match, then we have seen it before in an existing
         # conversation.
         # If we have seen it before, then either:
@@ -376,12 +377,12 @@ module Vertebra
         if iq.sub_type == LM::MessageSubType::SET
           # The sensible thing to do with a IQ-set that we have already
           # seen is to just synthesize an IQ-result.
-          result_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
+          result_iq = LM::Message.new(iq.node["from"], LM::MessageType::IQ)
           result_iq.node.raw_mode = true
-          result_iq.node.set_attribute("id", iq.node.get_attribute("id"))
-          result_iq.node.set_attribute('xml:lang','en')
+          result_iq.node["id"] = id
+          result_iq.node['xml:lang'] = 'en'
           result_iq.node.value = iq.node.child
-          result_iq.root_node.set_attribute('type', 'result')
+          result_iq.root_node['type'] = 'result'
 
           response = Vertebra::Synapse.new
           response[:name] = 'duplicate response'
@@ -403,10 +404,10 @@ module Vertebra
       # this stuff without inserting transport layer specific manipulations
       # into the core of the code.
       if iq.sub_type == LM::MessageSubType::SET
-        error_iq = LM::Message.new(iq.node.get_attribute("from"), LM::MessageType::IQ)
+        error_iq = LM::Message.new(iq.node["from"], LM::MessageType::IQ)
         error_iq.node['type'] = 'error'
-        error_iq.node.set_attribute("id", iq.node.get_attribute("id"))
-        error_iq.node.set_attribute('xml:lang','en')
+        error_iq.node["id"] = iq.node["id"]
+        error_iq.node['xml:lang'] = 'en'
 
         error_iq.node.raw_mode = true
         error_iq.node.value = iq.node.child

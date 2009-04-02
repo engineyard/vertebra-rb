@@ -56,11 +56,11 @@ module Vertebra
       end
 
       def from
-        @iq.node.get_attribute("from")
+        @iq.node["from"]
       end
 
       def to
-        @iq.node.get_attribute("to")
+        @iq.node["to"]
       end
 
       def op
@@ -73,17 +73,16 @@ module Vertebra
 
       def receive_request
         logger.debug "Server#receive_request: #{@iq}"
-        self.token = op.get_attribute('token').split(':').last << ":#{Vertebra.gen_token}"
-        op.set_attribute("token", token)
+        self.token = op['token'].split(':').last << ":#{Vertebra.gen_token}"
+        op["token"] = token
         @agent.servers[token] = self
 
         result_iq = LM::Message.new(from, LM::MessageType::IQ)
         result_iq.node.raw_mode = false
-        result_iq.node.set_attribute("id", @iq.root_node.get_attribute("id"))
-        result_iq.root_node.set_attribute('type', 'result')
-        #result_iq.node.value = op
+        result_iq.node["id"] = @iq.root_node["id"]
+        result_iq.root_node['type'] = 'result'
         result_iq.node.add_child op.name
-        result_iq.node.child.set_attribute("token", token)
+        result_iq.node.child["token"] = token
         responder = Vertebra::Synapse.new
         responder.condition { @agent.connection_is_open_and_authenticated? }
         responder.callback do
@@ -123,15 +122,16 @@ module Vertebra
       def process_authorized
         logger.debug "Server#process_authorized"
         iq = LM::Message.new(from, LM::MessageType::IQ)
-        iq.root_node.set_attribute('type', 'set')
+        iq.root_node['type'] = 'set'
         ack = Vertebra::Ack.new(token)
-        iq.node.raw_mode = true
-        iq.node.value = ack.to_s
+        iq.node.raw_mode = false
+        iq.node.add_child ack
 
         acknowledger = Vertebra::Synapse.new
         acknowledger.condition { @agent.connection_is_open_and_authenticated? }
         acknowledger.callback do
           @last_message_sent = iq
+          @agent.packet_memory.set(iq.node['to'], token, iq.node['id'],iq)
           @agent.send_iq(iq)
         end
         @agent.do_or_enqueue_synapse(acknowledger)
@@ -140,14 +140,15 @@ module Vertebra
       def process_not_authorized
         logger.debug "Server#process_not_authorized"
         iq = LM::Message.new(from, LM::MessageType::IQ)
-        iq.root_node.set_attribute('type', 'set')
+        iq.root_node['type'] = 'set'
         nack = Vertebra::Nack.new(token)
-        iq.node.raw_mode = true
-        iq.node.value = nack.to_s
+        iq.node.raw_mode = false
+        iq.node.add_child nack
         terminator = Vertebra::Synapse.new
         terminator.condition { @agent.connection_is_open_and_authenticated? }
         terminator.callback do
           @last_message_sent = iq
+          @agent.packet_memory.set(iq.node['to'], token, iq.node['id'],iq)
           @agent.send_iq(iq)
         end
         @agent.do_or_enqueue_synapse(terminator)
@@ -188,7 +189,7 @@ module Vertebra
             Vertebra::Marshal.encode(:error => e).children.each do |child|
               error_tag.add(child) # Insert the marshalled error XML into the error tag
             end
-            result_iq.root_node.set_attribute('type','error')
+            result_iq.root_node['type'] = 'error'
             result_iq.node.add_child error_tag
             @agent.packet_memory.delete_by_token(@iq.node['token'])
             logger.debug "SENDING ERROR: #{result_iq.node}"
@@ -204,7 +205,7 @@ module Vertebra
               result_iqs = []
               ops_bucket[:results].each do |result|
                 result_iq = LM::Message.new(from, LM::MessageType::IQ)
-                result_iq.root_node.set_attribute('type', 'set')
+                result_iq.root_node['type'] = 'set'
 
 
                 logger.debug "RESULT: #{result.inspect}"
@@ -214,8 +215,8 @@ module Vertebra
                 end
                 logger.debug "ADDING: #{result_tag}"
 
-                result_iq.root_node.raw_mode = true
-                result_iq.root_node.value = result_tag.to_s
+                result_iq.root_node.raw_mode = false
+                result_iq.root_node.add_child result_tag
                 logger.debug "FULL IQ: #{result_iq.node}"
 
                 result_iqs << result_iq
@@ -227,6 +228,7 @@ module Vertebra
               notifier.callback do
                 result_iqs.each do |iq|
                   @final_countdown += 1
+                  @agent.packet_memory.set(iq.node['to'], token, iq.node['id'],iq)
                   @agent.send_iq(iq)
                 end
                 # If there are no results then force sending the 'final' stanza
@@ -238,6 +240,7 @@ module Vertebra
             @agent.do_or_enqueue_synapse(bucket_handler)
           else
             notifier.callback do
+							@agent.packet_memory.set(iq.node['to'], token, iq.node['id'],iq)
               @agent.send_iq(result_iq)
             end
             @agent.do_or_enqueue_synapse(notifier)
@@ -252,17 +255,18 @@ module Vertebra
         if @final_countdown <= 0 && @state != :flush
           @state = :flush
           final_iq = LM::Message.new(from, LM::MessageType::IQ)
-          final_iq.root_node.set_attribute('type', 'set')
+          final_iq.root_node['type'] = 'set'
           final_iq.node.raw_mode = true
           final_tag = ::Vertebra::Final.new(token)
           final_iq.node.add_child final_tag
           logger.debug "  Send Final"
-          @agent.send_iq(final_iq)
-          @agent.packet_memory.delete_by_token(@iq.node['token'])
+          @agent.packet_memory.set(final_iq.node['to'], token, final_iq.node['id'],final_iq)
+          @agent.send_iq(final_iq)  
         end
       end
 
       def process_final
+				@agent.packet_memory.delete_by_token(@iq.node['token'])
         @state = :commit
       end
 

@@ -18,11 +18,22 @@
 module Vertebra
   class Stanza
     def self.handle(agent, iq)
-      child_node_name = iq.node.child.name
+      if iq.node["type"] == 'result'
+        jid = iq.node['from']
+        id = iq.node['id']
+        if jid && id
+          child_node = agent.packet_memory.get_by_jid_and_id(jid,id)
+          child_node_name = child_node.node.child.name if child_node
+        end
+      end
+
+      child_node_name ||= iq.node.child.name      
+      
       klass = case child_node_name
       when 'session'
         Stanzas::Session
       when 'op'
+
         Stanzas::Init
       when 'ack'
         Stanzas::Ack
@@ -92,7 +103,7 @@ module Vertebra
     end
 
     def token
-      child_node["token"]
+      (child_node && child_node["token"]) || @agent.packet_memory.get_by_jid_and_id(from, id).node.child["token"]
     end
 
     def logger
