@@ -117,8 +117,6 @@ describe Vertebra::Protocol::Client do
     @synapses.fire
 
     expected_iq = create_response_iq
-    expected_iq.node.raw_mode = true
-    expected_iq.node.value = stanza
     actual_iq.node.to_s.should == expected_iq.node.to_s
   end
 
