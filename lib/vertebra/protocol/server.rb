@@ -176,24 +176,7 @@ module Vertebra
           logger.debug "handling #{op}"
           ops_bucket = nil
 
-          begin
-            ops_bucket = @agent.dispatcher.handle(operation, op)
-          rescue Exception => e
-            notifier = Vertebra::Synapse.new
-            notifier.condition { @agent.connection_is_open_and_authenticated? }
-
-            result_iq = LM::Message.new(from, LM::MessageType::IQ)
-            logger.error "operation FAILED #{op}: #{e.class}: #{e.message}"
-            logger.debug e.backtrace.inspect
-            error_tag = Vertebra::Error.new(token)
-            Vertebra::Marshal.encode(:error => e).children.each do |child|
-              error_tag.add(child) # Insert the marshalled error XML into the error tag
-            end
-            result_iq.root_node['type'] = 'error'
-            result_iq.node.add_child error_tag
-            @agent.packet_memory.delete_by_token(@iq.node['token'])
-            logger.debug "SENDING ERROR: #{result_iq.node}"
-          end
+          ops_bucket = @agent.dispatcher.handle(operation, op)
 
           if ops_bucket
             bucket_handler = Vertebra::Synapse.new

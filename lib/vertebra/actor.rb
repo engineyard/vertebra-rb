@@ -146,7 +146,7 @@ module Vertebra
                 method_result = self.send(method_name, operation, args)
               rescue Exception => e
                 logger.error "Got an exception: #{e.message}"
-                logger.debug e.backtrace
+                logger.debug e.backtrace.inspect
                 method_name = nil
                 method_result = :no_result
               else
@@ -173,10 +173,16 @@ module Vertebra
       else
         method_iterator.condition do
           method_names.each do |method_name|
-            if self.method(method_name).arity > 1
-              method_result = self.send(method_name, operation, args)
-            else
-              method_result = self.send(method_name, args)
+            begin
+              if self.method(method_name).arity > 1
+                method_result = self.send(method_name, operation, args)
+              else
+                method_result = self.send(method_name, args)
+              end
+            rescue Exception => e
+              logger.error "Got an exception: #{e.message}"
+              logger.debug e.backtrace.inspect
+              method_result = e
             end
             
             r << method_result
