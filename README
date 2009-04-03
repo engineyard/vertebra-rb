@@ -3,16 +3,11 @@ server.
 
 === Starting Herault
 
-Agents require an instance of Herault, the discovery and security agent. The
-current implementation of Herault can be found in the vertebra-erl
-project. If vertebra-erl has been installed, then you can start Herault like
-this:
+Agents require an instance of Herault, the discovery and security agent. A very
+basic version of Herault ships with this library. Simply start an agent with
+the provided config file after editing it to meet your satisfaction.
 
- $ vertebractl herault start
-
-Or if you'd like to run it in debug mode:
-
- $ vertebractl herault run
+ $ bin/vagent start -c config/herault.yml
 
 == Running some agents
 
@@ -24,7 +19,7 @@ of the agent. The sample uses slice 0 on cluster rd00.
 
 To run the slice agent:
 
-% bin/vagent start -c spec/config/slice_agent.yml
+ $ bin/vagent start -c spec/config/slice_agent.yml
 
 To set various paths for pid files, logs and the herault agent's JID, check
 the sample config at spec/config/slice_agent.yml. Packet debugging to the log
@@ -35,19 +30,20 @@ is switched on with the jabber_debug option.
 There are two approaches.  The first is to start a persistent client agent
 which will be controlled via 'vshell'.  To do this, use:`
 
-% bin/vagent start -c spec/config/client.yml
+ $ bin/vagent start -c spec/config/client.yml
 
 You control a client agent via DRb, Ruby's built-in message passing protocol.
 The following command drops you into a normal Ruby shell with an instance
 variable representing the agent:
 
-% bin/vshell <port>
+ $ bin/vshell <port>
 
 The port number is optional. The default is 10392, the port defined in the
 client.yml example.
 
 To send an operation to a JID and wait for its results, use request:
-> @agent.request('/gem/list', :direct, {}, ['rd00-s00000@localhost'])
+
+ > @agent.request('/gem/list', :direct, {}, ['rd00-s00000@localhost'])
 
 To perform a single operation over a set of resources which includes
 discovering the actors and JIDs that provide them, use the #request method:
@@ -83,7 +79,7 @@ vertebra /OP [vertebra-flags] [op arguments]
   --log             Turn logging on. This will write an agent.PID.log file to
                     the temp directory, logging the CLI actions. Off by default.
   --help            Show this text.
-  
+
 Anything on the command line that is not one of the above flags is passed to
 the operation.  In order to differentiate between resources and other strings
 on the command line, one should preface any resource with 'res:'.
