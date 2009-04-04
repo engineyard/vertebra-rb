@@ -73,7 +73,7 @@ module Vertebra
     # a <nil> result marked as final.
     def handle(job)
       logger.debug "Dispatcher handling #{job}"
-      actors = candidates(job)
+      actors = candidates(job.operation, job.args)
       logger.debug "Found #{actors.size} candidate actors"
       logger.debug "SCOPE: #{job.scope.inspect}"
 
