@@ -67,6 +67,10 @@ module Vertebra
         @job.token
       end
 
+      def operation
+        @job.operation
+      end
+
       def from
         @job.from
       end
@@ -110,17 +114,11 @@ module Vertebra
 
       def process_authorization
         logger.debug "Server#process_authorization"
-        rexml_op = REXML::Document.new(op_node.to_s).root
-        res = {}
 
-        rexml_op.children.each do |el|
-          next if el.is_a?(REXML::Text)
-          res[el.text] = el.text if el.name == 'res'
-        end
-        res['from'] = from
-        res['to'] = to
+        resources = Vertebra::Utils.resources_from_args(args)
+        authorize_args = {"job" => {"operation" => operation, "from" => from, "to" => to, "resources" => resources}}
 
-        @agent.request('/security/authorize', :direct, res, [@agent.herault_jid]) do |results|
+        @agent.request('/security/authorize', :direct, authorize_args, [@agent.herault_jid]) do |results|
           if results['response'] == 'authorized'
             process_authorized
           else
