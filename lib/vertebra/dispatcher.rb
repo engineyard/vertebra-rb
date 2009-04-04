@@ -19,12 +19,12 @@ require 'vertebra/resource'
 
 module Vertebra
   class Dispatcher
-    attr_accessor :actors, :default_resources, :agent
+    attr_reader :actors, :deployment_resources, :agent
 
-    def initialize(agent, resources = [])
+    def initialize(agent, deployment_resources)
       @agent = agent
       @actors = []
-      @default_resources = resources.map { |res| Vertebra::Resource.parse(res) } if resources
+      @deployment_resources = deployment_resources
     end
 
     def register(actors)
@@ -42,10 +42,7 @@ module Vertebra
           actor_name = actor.to_s.constantcase
           actor_class = Vertebra::Utils.constant(actor_name)
           logger.debug "Registering #{actor_name} as #{actor_class}"
-          actor_instance = actor_class.new(actor_config)
-          actor_instance.agent = @agent
-          actor_instance.default_resources = @default_resources
-          @actors << actor_instance
+          @actors << actor_class.new(@agent, @deployment_resources, actor_config)
           registered << actor_name
         rescue => e
           logger.debug "Instantiation of actor #{actor.to_s.constantcase} failed; please confirm that the actor class that is desired carries this name."
@@ -57,14 +54,14 @@ module Vertebra
       registered
     end
 
-    def candidates(type, args)
-      logger.debug "in candidates (#{type}) -- args: #{args.inspect}"
-      resources = Vertebra::Utils.find_resources(args)
+    def candidates(operation, args)
+      logger.debug "in candidates (#{operation}) -- args: #{args.inspect}"
+      resources = Vertebra::Utils.resources_from_args(args)
 
       logger.debug "RESOURCES: #{resources.inspect}"
 
       actors.select do |actor|
-        actor.can_provide?(resources) && actor.op_path_resources.any? {|r| type >= r }
+        actor.providing_operation?(operation) && actor.providing_resources?(resources)
       end
     end
 
@@ -74,21 +71,18 @@ module Vertebra
     # response will be yielded and the boolean flag is used to mean 'this
     # is the last result'. If no actors can service the operation, we return
     # a <nil> result marked as final.
-    def handle(operation, op)
-      logger.debug "Dispatcher handling #{op}"
-      elt = REXML::Document.new(op.to_s).root
-      args = Vertebra::Marshal.decode(elt)
-      actors = candidates(Resource.parse(op['type']), args)
+    def handle(job)
+      logger.debug "Dispatcher handling #{job}"
+      actors = candidates(job)
       logger.debug "Found #{actors.size} candidate actors"
-      scope = elt.attributes.key?('scope') ? elt.attributes['scope'].to_sym : :all
-      logger.debug "SCOPE: #{scope.inspect}"
+      logger.debug "SCOPE: #{job.scope.inspect}"
 
       # Dispatched ops is an array of synapses which are each gathering the
       # results from the method dispatches they are responsible for.
       dispatched_ops = []
 
       actors.each do |actor|
-        dispatched_ops << actor.handle_op(operation, op.attributes['type'], scope, args)
+        dispatched_ops << actor.handle(job)
       end
 
       ops_bucket = Vertebra::Synapse.new

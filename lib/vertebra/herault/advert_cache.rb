@@ -25,6 +25,7 @@ module Vertebra
       end
 
       def add(resource, from, ttl)
+        raise "#{resource.inspect} is not a #{Resource}" unless resource.is_a?(Resource)
         @entries[resource][from] = Time.now + ttl
       end
 

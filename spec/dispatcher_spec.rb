@@ -16,23 +16,26 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/spec_helper'
-require 'vertebra'
-require 'vertebra/dispatcher'
-
-include Vertebra
 
 describe 'Vertebra Dispatcher' do
-
   include Vertebra::Utils
 
   before do
     $:.push File.join(File.dirname(__FILE__), 'mocks')
-    @dispatcher = Dispatcher.new(nil, ['/cluster/rd00', '/node/0'])
+    deployment = Vertebra::KeyedResources.new
+    deployment.add("cluster", '/cluster/rd00')
+    deployment.add("node", '/node/0')
+    deployment.add("provides", '/mock/test')
+    @dispatcher = Vertebra::Dispatcher.new(nil, deployment)
     @dispatcher.register('mock_actor/actor')
   end
 
-  it 'assign default resources' do
-    @dispatcher.default_resources.should == [resource('/cluster/rd00'), resource('/node/0')]
+  it 'assign deployment resources' do
+    @dispatcher.deployment_resources.to_hash.should == {
+      "cluster" => [resource('/cluster/rd00')],
+      "node" => [resource('/node/0')],
+      "provides" => [resource('/mock/test')]
+    }
   end
 
   it 'register an actor' do
@@ -40,19 +43,22 @@ describe 'Vertebra Dispatcher' do
   end
 
   it 'return proper candidate actors' do
-    actor = @dispatcher.candidates(resource('/list'), :cluster => resource('/cluster/rd00'), :node => resource('/node/0'), :provides => resource('/mock')).first
+    actor = @dispatcher.candidates(resource('/list'),
+                                   "cluster" => resource('/cluster/rd00'),
+                                   "node" => resource('/node/0'),
+                                   "provides" => resource('/mock')).first
     actor.should be_a_kind_of(MockActor::Actor)
   end
 
   it 'should use the op in actor candidate selection' do
-    @dispatcher.candidates(resource('/list/numbers'), :node => resource('/node/0')).map {|x| x.class}.should == [MockActor::Actor]
-    @dispatcher.candidates(resource('/list'), :cluster => resource('/cluster/rd00')).map {|x| x.class}.should == [MockActor::Actor]
-    @dispatcher.candidates(resource('/there/is/nothing/here'), :foo => '/foo').should == []
+    @dispatcher.candidates(resource('/list/numbers'), "node" => resource('/node/0')).map {|x| x.class}.should == [MockActor::Actor]
+    @dispatcher.candidates(resource('/list'), "cluster" => resource('/cluster/rd00')).map {|x| x.class}.should == [MockActor::Actor]
+    @dispatcher.candidates(resource('/there/is/nothing/here'), "foo" => '/foo').should == []
   end
 
   it 'should use resources in the args' do
-    MockActor::Actor.should === @dispatcher.candidates(resource('/list'), {:foo => resource("/cluster/rd00")}).first
-    @dispatcher.candidates(resource('/list'), {:foo => resource("/foo")}).first.should == nil
+    MockActor::Actor.should === @dispatcher.candidates(resource('/list'), {"cluster" => resource("/cluster/rd00")}).first
+    @dispatcher.candidates(resource('/list'), {"foo" => resource("/foo")}).first.should == nil
   end
 
   it 'handles missing actor libraries appropriately during registration' do

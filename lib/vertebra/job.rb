@@ -15,19 +15,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
-require File.dirname(__FILE__) + '/../actor'
-
 module Vertebra
-  module Actors
-    class Core < Vertebra::Actor
-
-      provides 'core' => '/core'
-
-      def quit(options = {})
-        Thread.new{ sleep 2; exit! }
-        logger.info "Restarting agent."
-        "Restarting agent"
-      end
+  class Job
+    def initialize(operation, token, scope, from, to, args)
+      @operation, @token, @scope, @from, @to, @args = operation, token, scope, from, to, args
     end
+    attr_reader :operation, :token, :scope, :from, :to, :args
   end
 end

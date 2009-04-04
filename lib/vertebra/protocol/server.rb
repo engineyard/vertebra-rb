@@ -39,13 +39,21 @@ module Vertebra
 
     class Server
 
-      attr_accessor :token, :agent, :state, :last_message_sent
+      attr_accessor :agent, :job, :state, :last_message_sent
 
-      def initialize(agent,iq)
+      def initialize(agent, iq)
         @agent = agent
         @state = :new
         @final_countdown = 0
         @iq = iq
+
+        token = op_node['token'].split(':').last << ":#{Vertebra.gen_token}"
+        op_node["token"] = token
+
+        element = REXML::Document.new(op_node.to_s).root
+        args = Vertebra::Marshal.decode(element)
+        @job = Job.new(Resource.parse(op_node['type']), token, op_node['scope'], iq.node['from'], iq.node['to'], args)
+        logger.debug "New job is #{@job.inspect}"
 
         receiver = Vertebra::Synapse.new
         receiver.callback do
@@ -55,33 +63,35 @@ module Vertebra
         @agent.do_or_enqueue_synapse(receiver)
       end
 
+      def token
+        @job.token
+      end
+
       def from
-        @iq.node["from"]
+        @job.from
       end
 
       def to
-        @iq.node["to"]
+        @job.to
       end
 
-      def op
+      def args
+        @job.args
+      end
+
+      def op_node
         @iq.node.get_child('op')
-      end
-
-      def operation
-        @operation ||= Struct.new(:from).new(from)
       end
 
       def receive_request
         logger.debug "Server#receive_request: #{@iq}"
-        self.token = op['token'].split(':').last << ":#{Vertebra.gen_token}"
-        op["token"] = token
         @agent.servers[token] = self
 
         result_iq = LM::Message.new(from, LM::MessageType::IQ)
         result_iq.node.raw_mode = false
         result_iq.node["id"] = @iq.root_node["id"]
         result_iq.root_node['type'] = 'result'
-        result_iq.node.add_child op.name
+        result_iq.node.add_child op_node.name
         result_iq.node.child["token"] = token
         responder = Vertebra::Synapse.new
         responder.condition { @agent.connection_is_open_and_authenticated? }
@@ -89,7 +99,7 @@ module Vertebra
           @last_message_sent = result_iq
           @agent.send_iq(result_iq)
           @state = :verify
-          if @agent.opts[:herault_jid]
+          if @agent.herault_jid
             process_authorization
           else
             process_authorized
@@ -100,7 +110,7 @@ module Vertebra
 
       def process_authorization
         logger.debug "Server#process_authorization"
-        rexml_op = REXML::Document.new(op.to_s).root
+        rexml_op = REXML::Document.new(op_node.to_s).root
         res = {}
 
         rexml_op.children.each do |el|
@@ -173,10 +183,10 @@ module Vertebra
 
           error = false
 
-          logger.debug "handling #{op}"
+          logger.debug "handling #{job.inspect}"
           ops_bucket = nil
 
-          ops_bucket = @agent.dispatcher.handle(operation, op)
+          ops_bucket = @agent.dispatcher.handle(job)
 
           if ops_bucket
             bucket_handler = Vertebra::Synapse.new
@@ -189,7 +199,6 @@ module Vertebra
               ops_bucket[:results].each do |result|
                 result_iq = LM::Message.new(from, LM::MessageType::IQ)
                 result_iq.root_node['type'] = 'set'
-
 
                 logger.debug "RESULT: #{result.inspect}"
                 result_tag = Vertebra::Data.new(token)
@@ -223,7 +232,7 @@ module Vertebra
             @agent.do_or_enqueue_synapse(bucket_handler)
           else
             notifier.callback do
-							@agent.packet_memory.set(iq.node['to'], token, iq.node['id'],iq)
+              @agent.packet_memory.set(iq.node['to'], token, iq.node['id'],iq)
               @agent.send_iq(result_iq)
             end
             @agent.do_or_enqueue_synapse(notifier)
@@ -244,12 +253,12 @@ module Vertebra
           final_iq.node.add_child final_tag
           logger.debug "  Send Final"
           @agent.packet_memory.set(final_iq.node['to'], token, final_iq.node['id'],final_iq)
-          @agent.send_iq(final_iq)  
+          @agent.send_iq(final_iq)
         end
       end
 
       def process_final
-				@agent.packet_memory.delete_by_token(@iq.node['token'])
+        @agent.packet_memory.delete_by_token(@iq.node['token'])
         @state = :commit
       end
 

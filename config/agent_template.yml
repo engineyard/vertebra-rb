@@ -10,6 +10,6 @@ herault_jid: herault@engineyard.com/herault
 actors:
  - vertebra-gemtool/actor
  - vertebra/actors/core
-default_resources:
- - /cluster/rd00
- - /node/0
+deployment_resources:
+  cluster: /cluster/rd00
+  cluster: /node/0

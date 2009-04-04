@@ -9,6 +9,6 @@ herault_jid: herault@rd00.engineyard.com/herault
 actors:
  - vertebra-gemtool/actor
 default_resources:
- - /client
+  role: /client
 log_path: /tmp/ey_client.log
 pid_path: /tmp/ey_client.pid
