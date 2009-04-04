@@ -303,10 +303,10 @@ module Vertebra
       end
     end
 
-    def request(type, scope, args, jids = nil, &block)
+    def request(operation, scope, args = {}, jids = nil, &block)
       token = Vertebra.gen_token
 
-      synapse = Outcall.start(self, token, Resource.parse(type), scope, args, jids)
+      synapse = Outcall.start(self, Resource.parse(operation), token, scope, args, jids)
 
       # TODO: Should this have a timeout on it? I think probably, yes.
       requestor = Vertebra::Synapse.new

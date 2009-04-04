@@ -21,5 +21,11 @@ module Vertebra
       @operation, @token, @scope, @from, @to, @args = operation, token, scope, from, to, args
     end
     attr_reader :operation, :token, :scope, :from, :to, :args
+
+    def update_token(new_token)
+      raise ArgumentError, "Token cannot be updated to #{new_token}, it has already been updated once" if @updated
+      @updated = true
+      @token = new_token
+    end
   end
 end
