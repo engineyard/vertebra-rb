@@ -1,0 +1,10 @@
+jid: herault@localhost/herault
+password: testing
+debug: true
+jabber_debug: true
+log_path: :error
+pid_path: /tmp/herault.pid
+herault_jid: false
+actor_path: lib
+actors:
+  - vertebra/herault/security

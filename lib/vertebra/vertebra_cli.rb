@@ -194,7 +194,7 @@ module Vertebra
       end
     end
 
-    def run(argv)
+    def configure(argv)
       cli_options = parse_commandline(argv)
       file_options = read_config_file(cli_options.delete(:config_file))
       @options = file_options.merge cli_options
@@ -204,6 +204,18 @@ module Vertebra
        :password, :scope, :verbose, :yaml].each do |option|
         instance_variable_set("@#{option}", @options.delete(option))
       end
+    end
+
+    def add_op_arg(key, value)
+      @op_args[key] = value
+    end
+
+    def remove_op_arg(key)
+      @op_args.delete(key) if @op_args.has_key? key
+    end
+
+    def run(argv)
+      configure(argv)
       dispatch_request
     end
   end
