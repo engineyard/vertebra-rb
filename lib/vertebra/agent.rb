@@ -325,6 +325,44 @@ module Vertebra
       logger.debug "KABOOM!  #{e}"  
     end
 
+    def send_result(jid, id, children = [], indirect_block = nil, &direct_block)
+      result_iq = LM::Message.new(jid, LM::MessageType::IQ, LM::MessageSubType::RESULT)
+      result_iq.node.raw_mode = false
+      result_iq.node["id"] = id
+      result_iq.node['xml:lang'] = 'en'
+      
+      children.each do |op_tuple|
+        name, attributes = op_tuple
+        result_iq.node.add_child name
+        attributes.each {|k,v| result_iq.node.child[k] = v }
+      end
+
+      block = direct_block || indirect_block
+      logger.debug "BLOCK: #{block.inspect}"
+      
+      response = Vertebra::Synapse.new
+      response.condition { connection_is_open_and_authenticated? }
+      response.callback do
+        send_iq(result_iq)
+        logger.debug "CB BLOCK: #{block.inspect}"
+        block.call if block
+      end
+
+      do_or_enqueue_synapse(response)
+      result_iq
+    end
+
+    def send_iq_with_synapse(iq, protocol)
+      synapse = Vertebra::Synapse.new
+      synapse.condition { connection_is_open_and_authenticated? }
+      synapse.callback do
+        protocol.last_message_sent = iq
+        packet_memory.set(iq.node['to'], iq.node.child['token'], iq.node['id'],iq)
+        send_iq(iq)
+      end
+      do_or_enqueue_synapse(synapse)
+    end
+
     def parse_token(iq)
       iq['token']
     end

@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
+require 'loudmouth'
+
 module Vertebra
   class BaseElement < Jabber::XMPPElement
     def initialize(token = nil)
@@ -25,6 +27,14 @@ module Vertebra
     def token
       attributes['token']
     end
+    
+    def to_iq(from = '')
+      iq = LM::Message.new(from, LM::MessageType::IQ, LM::MessageSubType::SET)
+      iq.node.raw_mode = false
+      iq.node.add_child self
+      iq
+    end
+
   end
 
   class Ack < BaseElement

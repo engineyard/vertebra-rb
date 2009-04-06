@@ -18,13 +18,11 @@
 module Vertebra
   class Stanza
     def self.handle(agent, iq)
-      if iq.node["type"] == 'result'
-        jid = iq.node['from']
-        id = iq.node['id']
-        if jid && id
-          child_node = agent.packet_memory.get_by_jid_and_id(jid,id)
-          child_node_name = child_node.node.child.name if child_node
-        end
+      jid = iq.node['from']
+      id = iq.node['id']
+      if jid && id
+        child_node = agent.packet_memory.get_by_jid_and_id(jid,id)
+        child_node_name = child_node.node.child.name if child_node
       end
 
       child_node_name ||= iq.node.child.name      
@@ -33,7 +31,6 @@ module Vertebra
       when 'session'
         Stanzas::Session
       when 'op'
-
         Stanzas::Init
       when 'ack'
         Stanzas::Ack

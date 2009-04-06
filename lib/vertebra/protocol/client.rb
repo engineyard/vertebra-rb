@@ -101,6 +101,8 @@ module Vertebra
         resender.callback do
           @outcall.send_iq(@last_message_sent)
         end
+        
+        # This algorithm provides for a slowly increasing delay between sends.
         EM.add_timer((Math.log(delay + 0.1)).to_i) { @outcall.enqueue_synapse(resender) }
       end
 
@@ -114,22 +116,7 @@ module Vertebra
           @state = :authfail
         end
 
-        result_iq = LM::Message.new(iq.node["from"], LM::MessageType::IQ)
-        result_iq.node.raw_mode = false
-        result_iq.node["id"] = iq.node["id"]
-        result_iq.node['xml:lang'] = 'en'
-        result_iq.root_node['type'] = 'result'
-
-        response = Vertebra::Synapse.new
-        response[:name] = 'process_ack_or_nack response'
-        response.condition { @outcall.connection_is_open_and_authenticated? }
-        response.callback do
-          logger.debug "Client#process_ack_or_nack: sending #{result_iq.node}"
-          @last_message_sent = result_iq
-          @outcall.send_iq(result_iq)
-        end
-
-        @outcall.do_or_enqueue_synapse(response)
+				@last_message_sent = @outcall.send_result(iq.node["from"], iq.node["id"])
       end
 
       def process_data_or_final(iq, stanza_type, stanza)
@@ -152,21 +139,7 @@ module Vertebra
           @outcall.remove_client(@token)
         end
 
-        result_iq = LM::Message.new(iq.node["from"], LM::MessageType::IQ, LM::MessageSubType::RESULT)
-        result_iq.node.raw_mode = false
-        result_iq.node['id'] = iq.node['id']
-        result_iq.node['xml:lang'] = 'en'
-        result_iq.node['type'] = 'result'
-        response = Vertebra::Synapse.new
-        response[:name] = 'process_data_or_final response'
-        response.condition { @outcall.connection_is_open_and_authenticated? }
-        response.callback do
-          logger.debug "Client#process_data_or_final: sending #{result_iq.node}"
-          @last_message_sent = result_iq
-          @outcall.send_iq(result_iq)
-        end
-
-        @outcall.do_or_enqueue_synapse(response)
+				@last_message_sent = @outcall.send_result(iq.node["from"], iq.node["id"])
       end
 
       def results

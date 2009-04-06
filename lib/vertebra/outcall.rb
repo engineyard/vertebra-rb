@@ -168,6 +168,10 @@ module Vertebra
       @agent.send_iq(*args)
     end
 
+    def send_result(jid, id, attributes = {}, &block)
+      @agent.send_result(jid, id, attributes, block)
+    end
+
     def packet_memory(*args)
       @agent.packet_memory(*args)
     end
