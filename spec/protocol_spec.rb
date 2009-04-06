@@ -36,19 +36,25 @@ class Mock
       define_method symbol, &block
     end
   end
+
 end
 
 describe Vertebra::Protocol::Client do
   AGENT_JID = "agent@example.com"
   REMOTE_JID = "test@example.com"
+  DEFAULT_ID = "42"
 
   before :each do
     @synapses = synapses = Vertebra::SynapseQueue.new
+    $jid = $id = $children = nil
+
     @agent = Mock.new do |mock|
       mock.def(:connection_is_open_and_authenticated?) {true}
       mock.def(:jid) {AGENT_JID}
       mock.def(:remove_client) {|token| }
       mock.def(:send_iq) {|iq| }
+      mock.def(:send_result) {|*args| $jid, $id, $children, indirect_block, direct_block = args}
+      mock.def(:send_iq_with_synapse) {|iq, protocol| }
       mock.def(:add_client) {|token, client| }
       mock.def(:enqueue_synapse) {|synapse| synapses << synapse}
       mock.def(:do_or_enqueue_synapse) {|synapse| synapses << synapse}
@@ -87,7 +93,7 @@ describe Vertebra::Protocol::Client do
 
   def create_iq
     iq = LM::Message.new(REMOTE_JID, LM::MessageType::IQ)
-    iq.node.set_attribute('id', '42')
+    iq.node.set_attribute('id', DEFAULT_ID)
     iq.node.set_attribute('xml:lang','en')
     iq.node.set_attribute('type', 'set')
     iq
@@ -113,11 +119,11 @@ describe Vertebra::Protocol::Client do
     yield(stanza) if block_given?
 
     @client.send(method, iq, type, stanza)
-    actual_iq = nil, @agent.def(:send_iq) {|x| actual_iq = x}
     @synapses.fire
 
     expected_iq = create_response_iq
-    actual_iq.node.to_s.should == expected_iq.node.to_s
+    $jid.should == REMOTE_JID
+    $id.should == DEFAULT_ID
   end
 
   it 'Should respond to a nack when in the ready state' do
