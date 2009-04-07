@@ -10,6 +10,6 @@ herault_jid: herault@localhost/herault
 actors:
  - mock_actor/actor
 default_resources:
- - /cluster/rd00
- - /node/0
+  cluster: /cluster/rd00
+  node: /node/0
 test_mode: true

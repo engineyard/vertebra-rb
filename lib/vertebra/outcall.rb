@@ -17,13 +17,13 @@
 
 module Vertebra
   class Outcall
-    def self.start(agent, token, type, scope, args, jids)
-      new(agent, token, type, scope, args, jids).start
+    def self.start(agent, operation, token, scope, args, jids)
+      new(agent, operation, token, scope, args, jids).start
     end
 
-    def initialize(agent, token, type, scope, args, jids)
+    def initialize(agent, operation, token, scope, args, jids)
       raise ArgumentError, "#{args.inspect} is not a Hash" unless args.is_a?(Hash)
-      @agent, @token, @type, @scope, @args, @jids = agent, token, type, scope, args, jids
+      @agent, @operation, @token, @scope, @args, @jids = agent, operation, token, scope, args, jids
     end
 
     def start
@@ -72,8 +72,8 @@ module Vertebra
     def scatter(jids)
       ops = {}
       jids.each do |jid|
-        logger.debug "scatter# #{@token} #{@op_type} | #{jid} | #{@args.inspect}"
-        ops[jid] = raw_op(@type, jid, @args)
+        logger.debug "scatter# #{@token} #{@operation} | #{jid} | #{@args.inspect}"
+        ops[jid] = raw_op(@operation, jid, @args)
       end
       ops
     end
@@ -81,7 +81,7 @@ module Vertebra
     def gather_one(discoverer, jids)
       nexter = Vertebra::Synapse.new
       jid = jids.shift
-      op = raw_op(@type, jid, @args)
+      op = raw_op(@operation, jid, @args)
       nexter.condition do
         op.done? ? :succeeded : :deferred
       end
@@ -93,7 +93,7 @@ module Vertebra
           # The client is done, but it is not in :commit state, so it failed.
           # If there are other jids to try, do so.
           if jids.length > 0
-            gather_one(discoverer, jids, op_type, entree)
+            gather_one(discoverer, jids, operation, entree)
           else
             # There were no other jids to try, so we're out of targets, and have
             # no results; this returns an error.
@@ -116,10 +116,11 @@ module Vertebra
         return
       end
 
-      resources = Vertebra::Utils.resources_hash_from_args(@type, @args)
+      resources = Vertebra::Utils.resources_from_args(@args)
+      discover_args = {"job" => {"operation" => @operation, "resources" => resources}}
 
-      logger.debug "DISCOVERING: #{resources.inspect} on #{@herault_jid}"
-      client = raw_op('/security/discover', @agent.herault_jid, resources)
+      logger.debug "DISCOVERING: #{discover_args.inspect} on #{@agent.herault_jid}"
+      client = raw_op('/security/discover', @agent.herault_jid, discover_args)
       requestor = Vertebra::Synapse.new
       requestor.condition do
         client.done? ? :succeeded : :deferred
@@ -134,8 +135,8 @@ module Vertebra
       @agent.enqueue_synapse(requestor)
     end
 
-    def raw_op(type, to, args)
-      Vertebra::Protocol::Client.start(self, @token, type, to, @scope, args)
+    def raw_op(operation, to, args)
+      Vertebra::Protocol::Client.start(self, operation, @token, @scope, to, args)
     end
 
     def logger
@@ -144,6 +145,10 @@ module Vertebra
 
     # TODO: These method are proxying through to the Agent instance
     # They are here to show what parts of the API need to be rethought
+    def jid(*args)
+      @agent.jid(*args)
+    end
+
     def add_client(*args)
       @agent.add_client(*args)
     end

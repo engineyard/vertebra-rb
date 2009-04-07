@@ -63,7 +63,7 @@ describe Vertebra::Protocol::Client do
 
     @to = "to@localhost"
     @token = Vertebra.gen_token
-    @client = Vertebra::Protocol::Client.start(@agent, @token, "/foo", @to, :all, {})
+    @client = Vertebra::Protocol::Client.start(@agent, Vertebra::Utils.resource("/foo"), @token, @to, :all, {})
   end
 
   it 'Should enqueue a synapse during initialization' do

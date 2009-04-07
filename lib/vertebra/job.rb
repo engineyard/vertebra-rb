@@ -15,19 +15,17 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
-require File.dirname(__FILE__) + '/../actor'
-
 module Vertebra
-  module Actors
-    class Core < Vertebra::Actor
+  class Job
+    def initialize(operation, token, scope, from, to, args)
+      @operation, @token, @scope, @from, @to, @args = operation, token, scope, from, to, args
+    end
+    attr_reader :operation, :token, :scope, :from, :to, :args
 
-      provides 'core' => '/core'
-
-      def quit(options = {})
-        Thread.new{ sleep 2; exit! }
-        logger.info "Restarting agent."
-        "Restarting agent"
-      end
+    def update_token(new_token)
+      raise ArgumentError, "Token cannot be updated to #{new_token}, it has already been updated once" if @updated
+      @updated = true
+      @token = new_token
     end
   end
 end

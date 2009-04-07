@@ -11,6 +11,6 @@ actors:
  - vertebra/actors/core
  - vertebra-gemtool/actor
  - vertebra-xen/actor
-default_resources:
- - /cluster/rd00
- - /node/0
+deployment_resources:
+  cluster: /cluster/rd00
+  node: /node/0

@@ -23,11 +23,11 @@ require 'vertebra/actors/core'
 describe Vertebra::Actors::Core do
   
   before(:all) do
-    @actor = Vertebra::Actors::Core.new
+    @actor = Vertebra::Actors::Core.new(nil, nil, nil)
   end
   
   it 'should provide /core resource' do
-    @actor.provides.should == [Vertebra::Resource.parse('/core')]
+    @actor.provided_resources.to_hash.should == {"core" => [Vertebra::Resource.parse('/core')]}
   end
 
   it 'should exit process in quit method' do
@@ -35,6 +35,7 @@ describe Vertebra::Actors::Core do
     # TODO: mock exit! call
     result = @actor.quit
     result.should == "Restarting agent"
+    pending "This should use some other dispatch method not just calling the method"
   end
 
 end

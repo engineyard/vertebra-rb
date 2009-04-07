@@ -11,6 +11,6 @@ actors:
  - vertebra-gemtool/actor
  - mock_actor/actor
 default_resources:
- - /cluster/rd00
- - /slice/0
+  cluster: /cluster/rd00
+  slice: /slice/0
 test_mode: true

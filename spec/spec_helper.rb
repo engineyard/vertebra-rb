@@ -19,14 +19,51 @@ $TESTING = true
 
 require 'rubygems'
 require 'pp'
-require 'drb'
-require 'yaml'
 require 'rr'
 require 'spec'
 require File.dirname(__FILE__) + '/../lib/vertebra'
 
 Spec::Runner.configure do |config|
-   config.mock_with :rr
-   # or if that doesn't work due to a version incompatibility
-   # config.mock_with RR::Adapters::Rspec
- end
+  config.mock_with :rr
+  # or if that doesn't work due to a version incompatibility
+  # config.mock_with RR::Adapters::Rspec
+end
+
+Spec::Matchers.create :provide_operations do |operations|
+  match do |actor|
+    @actual = normalize(actor.provided_operations)
+    @actual == operations
+  end
+
+  failure_message_for_should do |actor|
+    "The Actor was expected to provide the operations: #{operations.inspect}, but got #{@actual.inspect}"
+  end
+
+  def normalize(operations)
+    operations.map {|operation|
+      operation.to_s
+    }.sort
+  end
+end
+
+Spec::Matchers.create :provide_resources do |resources|
+  match do |actor|
+    @actual = normalize(actor.provided_resources)
+    @actual == resources
+  end
+
+  failure_message_for_should do |actor|
+    "The Actor was expected to provide the resources: #{resources.inspect}, but got #{@actual.inspect}"
+  end
+
+  def normalize(resources)
+    data = {}
+    resources.each do |key,resources|
+      resources = resources.map do |resource|
+        resource.to_s
+      end
+      data[key.to_s] = resources.sort
+    end
+    data
+  end
+end

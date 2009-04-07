@@ -46,14 +46,15 @@ module Vertebra
     class Client
       DONE_STATES = [:commit, :authfail, :error]
 
-      attr_reader :state, :token, :type, :to, :scope, :args
+      attr_reader :state, :job
 
-      def self.start(outcall, token, type, to, scope, args)
-        new(outcall, token, type, to, scope, args).start
+      def self.start(outcall, operation, token, scope, to, args)
+        new(outcall, operation, token, scope, to, args).start
       end
 
-      def initialize(outcall, token, type, to, scope, args)
-        @outcall, @token, @type, @to, @scope, @args = outcall, token, type, to, scope, args
+      def initialize(outcall, operation, token, scope, to, args)
+        @outcall = outcall
+        @job = Job.new(operation, token, scope, outcall.jid.to_s, to, args)
         @state = :new
       end
 
@@ -62,20 +63,20 @@ module Vertebra
         initiator[:name] = 'initiator'
         initiator.condition { @outcall.connection_is_open_and_authenticated? }
 
-        iq = LM::Message.new(@to, LM::MessageType::IQ, LM::MessageSubType::SET)
-        op = Vertebra::Init.new(@token, @type, @scope)
+        iq = LM::Message.new(job.to, LM::MessageType::IQ, LM::MessageSubType::SET)
+        op = Vertebra::Init.new(job.token, job.operation, job.scope)
 
         iq.node['xml:lang'] = 'en'
         iq.node.add_child(op)
         op_lm = iq.node.get_child(op.name)
 
-        Vertebra::Marshal.encode(@args).children.each do |el|
+        Vertebra::Marshal.encode(job.args).children.each do |el|
           op_lm.add_child el
         end
         logger.debug "CREATED IQ #{iq.node.to_s} with class #{iq.class}"
         
-        @outcall.packet_memory.set(@to, @token, iq.node['id'], iq)
-        @outcall.add_client(@token, self)
+        @outcall.packet_memory.set(job.to, job.token, iq.node['id'], iq)
+        @outcall.add_client(job.token, self)
 
         initiator.callback do
           @last_message_sent = iq
@@ -87,7 +88,7 @@ module Vertebra
       end
 
       def is_ready(token)
-        @token = token
+        job.update_token(token)
         @state = :ready
       end
 

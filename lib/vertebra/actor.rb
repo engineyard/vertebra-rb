@@ -15,108 +15,94 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'vertebra/resource'
-require 'open4'
-require File.dirname(__FILE__) + "/../../vendor/thor/lib/thor"
-
 module Vertebra
-
-  class ActorInternalError < StandardError; end
-
-  # Multiple actors run inside of a Vertebra::Agent instance. Actors, and
-  # therefore agents, provide resources for operations to be performed on.
-  # Actors inherit some resources from their Agent's environment, defined
-  # as :default_resources in the agent's config file.
-  #
-  # Actors can be any class. The only requirement is that the class contain
-  # a constant named RESOURCES which names the resources provided by that actor.
-  #
-  # Simple example actor:
-  #
-  # class GemManager
-  #   RESOURCES = ["/gem"]
-  #
-  #   def list(args = {})
-  #     arr = []
-  #     `gem list`.each do |line|
-  #       arr << line.chomp unless line =~ /LOCAL/ or line.chomp.empty?
-  #     end
-  #     arr
-  #   end
-  # end
-  #
-  # If the above actor was running on slice ey01-s00141 then it would provide
-  # the following resources in total:
-  #
-  #  '/cluster/ey01', '/slice/s00141', '/gem'
-  #
-  # This means that in order for this class to be selected during dispatch, the
-  # incoming operation must contain the same resources or a superset of these
-  # resources:
-  #
-  # <op type='list'>
-  #   <res name='cluster'>/cluster/ey01</res>
-  #   <res name='slice'>/slice/s00141</res>
-  #   <res name='gem'>/gem</res>
-  # </op>
-  #
-  # You can think of actors kinda like Merb or Rails controllers. It's where
-  # the action happens.
-  #
-  # Like with controllers, be aware that all public actor methods are available
-  # to an agent.
-  #
-
-  class Actor < Thor
-
+  class Actor
     class << self
+      def method_added(meth)
+        meth = meth.to_s
+
+        return if meth == "initialize"
+        return if !public_instance_methods.include?(meth) || !@description
+
+        method_descriptions[meth] = @description
+        @operations.each do |operation|
+          provided_operations.add(operation)
+          operation_methods[operation] << meth
+        end
+        @description, @operations = nil, nil
+      end
+
+      def desc(description)
+        @description = description
+      end
+
+      def bind_op(operation)
+        @operations ||= []
+        @operations << Vertebra::Resource.parse(operation)
+      end
+
+      def lookup_op(operation)
+        operation_methods[operation]
+      end
+
+      def provides(*args)
+        resources = args.last.is_a?(Hash) ? args.pop : {}
+        raise ArgumentError, "#{args.inspect} need to have keys for each resource" if args.any?
+        resources.each do |key,resource|
+          provided_resources.add(key, resource)
+        end
+      end
+
+      def provided_operations
+        @provided_operations ||= KeyedResources::ResourceSet.new
+      end
+
+      def operation_methods
+        @operation_methods ||= Hash.new do |h,operation|
+          h[operation] = []
+        end
+      end
+
       def provided_resources
-        @provided_resources || []
+        @provided_resources ||= KeyedResources.new
       end
 
-      def bind_op(resource, method_name)
-        key = Vertebra::Resource.parse(resource.to_s)
-        provides key
-        (@op_table ||= Hash.new {|h,k| h[k] = []})[key] << method_name
-      end
-
-      def op_table
-        @op_table
-      end
-
-      def lookup_op(resource)
-        @op_table[resource]
-      end
-
-      def provides(*resources)
-        (@provided_resources ||= []) << resources.collect { |r| Vertebra::Resource.parse(r) }
-        @provided_resources.flatten!
-        @provided_resources.uniq!
+      def method_descriptions
+        @method_descriptions ||= {}
       end
     end
 
-    attr_accessor :config, :default_resources, :agent
-
-    # use same method signature as Thor
-    def initialize(opts = {}, *args)
-      @config = opts || {}
-      logger.debug "#{self.class} got config #{@config.inspect}"
-      @default_resources = nil
-      @agent = nil
+    def initialize(agent, deployment_resources, config)
+      @agent = agent
+      @deployment_resources = deployment_resources || KeyedResources.new
+      @config = config
+      logger.debug "#{self.class} starting with config: #{config.inspect}"
     end
 
-    def op_path_resources
-      self.class.op_table.keys
+    def provided_operations
+      self.class.provided_operations
+    end
+
+    def provided_resources
+      @deployment_resources + self.class.provided_resources
+    end
+
+    def providing_operation?(operation)
+      provided_operations.matches?(operation)
+    end
+
+    def providing_resources?(resources)
+      resources.all? do |key,resource|
+        provided_resources.matches?(key, resource)
+      end
     end
 
     # TODO: This method needs to be refactored.  Nay, it begs to be refactored.
     # Also, there are probably some error handling cases that need better
     # testing.
-
-    def handle_op(operation, op_type, scope, args)
-      resource = Resource.parse(op_type.to_s)
-      method_names = self.class.lookup_op(resource)
-      raise NoMethodError unless method_names
+    def handle(job)
+      method_names = self.class.lookup_op(job.operation)
+      raise NoMethodError, "No method provides the #{job.operation} operation" unless method_names
 
       # This synapse is responsible for accumulating the results from any of the
       # actors which are running.
@@ -131,7 +117,7 @@ module Vertebra
 
       method_iterator = Vertebra::Synapse.new
 
-      case scope
+      case job.scope
       when :single
         randomized_method_names = method_names.sort_by { rand }
         method_name = nil
@@ -143,7 +129,11 @@ module Vertebra
 
             if method_name && method_result == :no_result
               begin
-                method_result = self.send(method_name, operation, args)
+                if self.method(method_name).arity == 2
+                  method_result = self.send(method_name, job.args, job)
+                else
+                  method_result = self.send(method_name, job.args)
+                end
               rescue Exception => e
                 logger.error "Got an exception: #{e.message}"
                 logger.debug e.backtrace.inspect
@@ -174,10 +164,10 @@ module Vertebra
         method_iterator.condition do
           method_names.each do |method_name|
             begin
-              if self.method(method_name).arity > 1
-                method_result = self.send(method_name, operation, args)
+              if self.method(method_name).arity == 2
+                method_result = self.send(method_name, job.args, job)
               else
-                method_result = self.send(method_name, args)
+                method_result = self.send(method_name, job.args)
               end
             rescue Exception => e
               logger.error "Got an exception: #{e.message}"
@@ -215,57 +205,8 @@ module Vertebra
       gatherer
     end
 
-    # Specify the resources that the actor provides.  The interface is additive.  That is,
-    # calling it again will add to the existing set of provided resources.
-
-    def provides
-      (default_resources || []) + self.class.provided_resources
-    end
-
-    def can_provide?(required_resources)
-      required_resources.all? do |req|
-        provides.any? do |provide|
-          provide >= req
-        end
-      end
-    end
-
-    def to_s
-      "<Actor[#{self.class.name}]: provides=#{provides.map{|n| n.to_s }.join(', ')}>"
-    end
-
-    def spawn(arg, *argv, &block)
-      # setup output hash
-      output = {:result => '', :stderr => ''}
-      default_options = {'stdout' => output[:result], 'stderr' => output[:stderr]}
-
-      # add default options to fill output hash
-      if argv.size > 1 and Hash === argv.last
-        argv.last.merge!(default_options)
-      else
-        argv.push default_options
-      end
-
-
-      # catch any spawn errors and return
-      begin
-        status = Open4::spawn(arg, *argv)
-      rescue Open4::SpawnError => e
-        raise ActorInternalError, e.message
-      end
-
-      if block_given?
-        formatted_output = yield(output[:result])
-        output[:result] = formatted_output
-      end
-
-      output.merge({:status => status})
-    end
-
     def logger
       Vertebra.logger
     end
-
   end
 end
-

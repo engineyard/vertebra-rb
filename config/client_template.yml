@@ -9,5 +9,5 @@ pid_path: /var/run/vertebra/agent.pid
 herault_jid: herault@engineyard.com/herault
 actors:
  - vertebra/actors/core
-default_resources:
- - /client
+deployment_resources:
+  role: /client

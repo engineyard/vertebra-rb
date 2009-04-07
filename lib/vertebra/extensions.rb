@@ -57,20 +57,12 @@ module Vertebra
       Resource.parse(text)
     end
 
-    def resources_hash_from_args(type, args)
-      data = {"resources" => {"type" => type, "args" => {}}}
+    def resources_from_args(args)
+      data = {}
       args.each do |key,value|
-        data["resources"]["args"][key] = value if value.is_a?(Resource)
+        data[key] = value if value.is_a?(Resource)
       end
       data
-    end
-
-    def find_resources(args)
-      resources = []
-      args.each do |key,value|
-        resources << value if value.is_a?(Resource)
-      end
-      resources
     end
 
     def keys_to_symbols(hash)
@@ -79,7 +71,7 @@ module Vertebra
       newhash
     end
 
-    module_function :constant, :keys_to_symbols, :resource, :find_resources, :resources_hash_from_args
+    module_function :constant, :keys_to_symbols, :resource, :resources_from_args
   end
 end
 

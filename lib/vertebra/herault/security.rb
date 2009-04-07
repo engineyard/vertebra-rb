@@ -20,38 +20,65 @@ require 'vertebra/herault/advert_cache'
 module Vertebra
   module Herault
     class Security < Vertebra::Actor
-      bind_op "/security/advertise", :advertise
-      desc "/security/advertise", "Store a resource advertisement"
-      def advertise(operation, options)
-        ttl = options["ttl"]
-        options["resources"].each do |resource|
-          advert_cache.add(resource, operation.from, ttl.to_i)
+      bind_op "/security/advertise"
+      desc "Store a resource advertisement"
+      def advertise(args, job)
+        ttl = args["ttl"]
+
+        args["operations"].each do |operation|
+          operation_advert_cache.add(operation, job.from, ttl.to_i)
         end
-        puts "Resources: "
-        puts advert_cache.resources
+
+        args["resources"].each do |key,resources|
+          resources.each do |resource|
+            advert_cache_for(key).add(resource, job.from, ttl.to_i)
+          end
+        end
+
+        puts "Operations cache: "
+        puts operation_advert_cache.resources
+
+        advert_caches.each do |key,cache|
+          puts "Resources for #{key.inspect}: "
+          puts cache.resources
+        end
+
         true
       end
 
-      bind_op "/security/discover", :discover
-      desc "/security/discover", "Discover agents for an operation"
-      def discover(operation, options)
-        jids = advert_cache.search(options["resources"]["type"])
+      bind_op "/security/discover"
+      desc "Discover agents for an operation"
+      def discover(args, job)
+        pp ["operation", "search", args["job"]["operation"]]
+        jids = operation_advert_cache.search(args["job"]["operation"])
+        pp ["operation", "results", jids]
 
-        options["resources"]["args"].each do |key,resource|
-          jids &= advert_cache.search(resource)
+        args["job"]["resources"].each do |key,resource|
+          pp ["resource", "search", key, resource]
+          pp advert_cache_for(key)
+          jids &= advert_cache_for(key).search(resource)
+          pp ["resource", "results", key, jids]
         end
 
         {"jids" => jids}
       end
 
-      bind_op "/security/authorize", :authorize
-      desc "/security/authorize", "Authorize an operation"
+      bind_op "/security/authorize"
+      desc "Authorize an operation"
       def authorize(operation, options)
         'authorized'
       end
 
-      def advert_cache
-        @advert_cache ||= AdvertCache.new
+      def operation_advert_cache
+        @operation_advert_cache ||= AdvertCache.new
+      end
+
+      def advert_cache_for(key)
+        advert_caches[key.to_s] ||= AdvertCache.new
+      end
+
+      def advert_caches
+        @advert_caches ||= {}
       end
     end
   end

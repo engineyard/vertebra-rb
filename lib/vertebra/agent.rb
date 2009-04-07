@@ -84,11 +84,18 @@ module Vertebra
 
       # TODO: Add options for these intervals, instead of a hardcoded timing?
 
-
       set_callbacks
 
-      @dispatcher = ::Vertebra::Dispatcher.new(self, @opts[:default_resources])
+      deployment_resources = KeyedResources.new
+      deployment_resources_hash = @opts[:deployment_resources] || {}
+      unless deployment_resources_hash.is_a?(Hash)
+        raise ArgumentError, "Deployment resources must be specified as a Hash: got #{deployment_resources_hash.inspect}"
+      end
+      deployment_resources_hash.each do |key,resource|
+        deployment_resources.add(key,resource)
+      end
 
+      @dispatcher = Dispatcher.new(self, deployment_resources)
       @clients, @servers = {},{}
 
       @show_synapses = false
@@ -296,10 +303,10 @@ module Vertebra
       end
     end
 
-    def request(type, scope, args, jids = nil, &block)
+    def request(operation, scope, args = {}, jids = nil, &block)
       token = Vertebra.gen_token
 
-      synapse = Outcall.start(self, token, Resource.parse(type), scope, args, jids)
+      synapse = Outcall.start(self, Resource.parse(operation), token, scope, args, jids)
 
       # TODO: Should this have a timeout on it? I think probably, yes.
       requestor = Vertebra::Synapse.new
@@ -320,6 +327,7 @@ module Vertebra
     end
 
     def send_iq(iq)
+      logger.debug "Sending iq: #{iq.root_node.to_s}"
       @conn.send(iq)
     rescue Exception => e
       logger.debug "KABOOM!  #{e}"  
@@ -459,33 +467,42 @@ module Vertebra
       end
     end
 
-    def advertise_op(resources, ttl = @ttl)
-      logger.debug "ADVERTISING: #{resources.inspect}"
-      request('/security/advertise', :direct, {:resources => resources, :ttl => ttl}, [@herault_jid]) do
-        logger.debug "Advertisement succeeded"
-      end
-    end
-
-    def unadvertise_op(resources)
-      logger.debug "UNADVERTISING: #{resources.inspect}"
-      request('/security/advertise', :direct, {:resources => resources, :ttl => 0}, [@herault_jid]) do
-        logger.debug "Unadvertisement succeeded"
+    def advertise_op(operations, resources, ttl)
+      logger.debug "ADVERTISING start: ttl=#{ttl}, operations=#{operations.inspect}, resources=#{resources.inspect}"
+      request('/security/advertise', :direct, {:operations => operations, :resources => resources, :ttl => ttl}, [@herault_jid]) do |response|
+        pp({"response" => response})
+        logger.debug "ADVERTISING complete: ttl=#{ttl}, operations=#{operations.inspect}, resources=#{resources.inspect}"
       end
     end
 
     def advertise_resources
-      unless provided_resources.empty?
-        advertise_op(provided_resources)
+      if provided_operations.any? && provided_resources.any?
+        advertise_op(provided_operations, provided_resources, @ttl)
+
         unless @advertise_timer_started
-          EM.add_periodic_timer(@ttl * 0.9) {advertise_op(provided_resources,@ttl)}
+          EM.add_periodic_timer(@ttl * 0.9) do
+            advertise_op(provided_operations, provided_resources, @ttl)
+          end
           @advertise_timer_started = true
         end
       end
     end
 
+    def provided_operations
+      operations = []
+      @dispatcher.actors.map do |actor|
+        pp actor.provided_operations
+        operations += actor.provided_operations.to_a
+      end
+      operations
+    end
+
     def provided_resources
-      actors = @dispatcher.actors || []
-      actors.collect {|actor| actor.provides }.flatten
+      resources = KeyedResources.new
+      @dispatcher.actors.map do |actor|
+        resources.merge(actor.provided_resources)
+      end
+      resources.to_hash
     end
 
     def self.default_status
