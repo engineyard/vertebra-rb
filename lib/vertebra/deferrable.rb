@@ -8,7 +8,7 @@
 require 'forwardable'
 
 module Vertebra
-  module Deferrable 
+  module Deferrable
 
     class SetCallbackFailed < Exception; end
 

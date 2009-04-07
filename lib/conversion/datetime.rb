@@ -82,4 +82,4 @@ module Vertebra
     end
 
   end
-end  
+end

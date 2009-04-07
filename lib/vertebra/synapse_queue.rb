@@ -14,7 +14,7 @@ module Vertebra
 
     def fire(show_synapses = false)
       endpoint = @queue.length - 1
-      
+
       logger.debug "QUEUE: iterating from #{@queue.length}" if show_synapses
       @queue[0..endpoint].each do |synapse|
         next unless synapse && synapse.respond_to?(:deferred_status?)

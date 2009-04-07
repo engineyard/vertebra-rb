@@ -21,12 +21,6 @@ require 'vertebra/synapse'
 require 'vertebra/synapse_queue'
 require 'vertebra/packet_memory'
 
-begin
-  #require 'ruby-growl'
-rescue LoadError
-  logger.debug "Install the growl gem for growl support. Growl notifications disabled."
-end
-
 module LmDispatcher
   def notify_readable
     notification = LM::Sink.notification
@@ -40,8 +34,8 @@ module Vertebra
     SLOW_TIMER_FREQUENCY = 50.0
     FAST_TIMER_FREQUENCY = 5.0
     MIN_TIMER_QUANTUM = 5.0
-    
     attr_accessor :drb_port
+
     attr_reader :jid
 
     attr_reader :dispatcher, :herault_jid, :clients, :servers, :conn, :packet_memory
@@ -64,7 +58,7 @@ module Vertebra
 
       @idle_ticks = 0
       @idle_threshold = SLOW_TIMER_FREQUENCY / FAST_TIMER_FREQUENCY
-      
+
       @pending_clients = []
       @active_clients = []
       @connection_in_progress = false
@@ -173,7 +167,7 @@ module Vertebra
     def enqueue_synapse(synapse)
       @synapse_queue << synapse
     end
-    
+
     def do_or_enqueue_synapse(synapse)
       if synapse && synapse.respond_to?(:deferred_status?)
         ds = synapse.deferred_status?
@@ -330,7 +324,7 @@ module Vertebra
       logger.debug "Sending iq: #{iq.root_node.to_s}"
       @conn.send(iq)
     rescue Exception => e
-      logger.debug "KABOOM!  #{e}"  
+      logger.debug "KABOOM!  #{e}"
     end
 
     def send_result(jid, id, children = [], indirect_block = nil, &direct_block)
@@ -338,7 +332,7 @@ module Vertebra
       result_iq.node.raw_mode = false
       result_iq.node["id"] = id
       result_iq.node['xml:lang'] = 'en'
-      
+
       children.each do |op_tuple|
         name, attributes = op_tuple
         result_iq.node.add_child name
@@ -347,7 +341,7 @@ module Vertebra
 
       block = direct_block || indirect_block
       logger.debug "BLOCK: #{block.inspect}"
-      
+
       response = Vertebra::Synapse.new
       response.condition { connection_is_open_and_authenticated? }
       response.callback do
@@ -470,8 +464,8 @@ module Vertebra
     def advertise_op(operations, resources, ttl)
       logger.debug "ADVERTISING start: ttl=#{ttl}, operations=#{operations.inspect}, resources=#{resources.inspect}"
       request('/security/advertise', :direct, {:operations => operations, :resources => resources, :ttl => ttl}, [@herault_jid]) do |response|
-        pp({"response" => response})
         logger.debug "ADVERTISING complete: ttl=#{ttl}, operations=#{operations.inspect}, resources=#{resources.inspect}"
+        logger.debug "response from advertise: #{response.inspect}"
       end
     end
 
@@ -491,7 +485,7 @@ module Vertebra
     def provided_operations
       operations = []
       @dispatcher.actors.map do |actor|
-        pp actor.provided_operations
+        logger.debug "provided operations: #{actor.provided_operations.inspect}"
         operations += actor.provided_operations.to_a
       end
       operations

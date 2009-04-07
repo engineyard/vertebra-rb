@@ -17,12 +17,12 @@
 
 module Vertebra
   class PacketMemory
-    
+
     def initialize
       @token_and_id_to_packet = Hash.new {|h1,k1| h1[k1] = {} }
       @jid_and_id_to_packet = Hash.new {|h1,k1| h1[k1] = {} }
     end
-    
+
     def [](k)
       if @token_and_id_to_packet.has_key?(k)
         @token_and_id_to_packet[k]
@@ -30,7 +30,7 @@ module Vertebra
         @jid_and_id_to_packet[k]
       end
     end
-    
+
     def get_by_token(token)
       @token_and_id_to_packet[token]
     end
@@ -43,12 +43,12 @@ module Vertebra
     def get_by_jid(jid)
       @jid_and_id_to_packet[jid]
     end
-    
+
     def get_by_jid_and_id(jid, id)
       jid_list = @jid_and_id_to_packet[jid]
       jid_list.has_key?(id) ? jid_list[id].first : nil
     end
-    
+
     def set(jid, token, id, packet)
       @token_and_id_to_packet[token][id] = [packet, jid]
       @jid_and_id_to_packet[jid][id] = [packet, token]

@@ -32,13 +32,13 @@ end
 
 module Vertebra
   class Runner<%= @config[:class_name] %> < BaseRunner
-  
+
   ### Put a hash of any options which are to be defined for all tasks into the
   # global_method_options class variable.  Leave it commented out if there are
   # no global options.
   #
   # @@global_method_options = ...
-  
+
   inherit_from_actor(<%= @config[:class_name] %>::Actor)
 
   end

@@ -102,7 +102,6 @@ module GeneratorCore
       FileUtils.mkdir_p(File.dirname(config[:destination_dir]),file_utils_options.dup) unless FileTest.exist? config[:destination_dir]
       if tmpdir
         if config[:specific_files]
-          
           config[:specific_files].each do |f|
             FileUtils.cp_r(File.join(tmpdir,f),config[:destination_dir],file_utils_options.dup) if FileTest.exists? File.join(tmpdir,f)
           end
@@ -144,7 +143,6 @@ module GeneratorCore
         rescue Exception => e
           raise TemplateEvaluationFailed.new(e)
         end
-
       end
 
       # The second pass renames files/dirs.

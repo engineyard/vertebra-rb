@@ -18,7 +18,7 @@
 require 'fileutils'
 
 describe 'vconfiggen. The vertebra config generator' do
-  
+
   vtempdir = "/tmp/vertebra_spec_vconfiggen_test_v_#{$$}"
   etempdir = "/tmp/vertebra_spec_vconfiggen_test_e_#{$$}"
 

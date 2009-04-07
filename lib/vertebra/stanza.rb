@@ -25,8 +25,8 @@ module Vertebra
         child_node_name = child_node.node.child.name if child_node
       end
 
-      child_node_name ||= iq.node.child.name      
-      
+      child_node_name ||= iq.node.child.name
+
       klass = case child_node_name
       when 'session'
         Stanzas::Session

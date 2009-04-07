@@ -23,7 +23,7 @@ require 'stringio'
 describe Vertebra do
   it "can disable the logger" do
     Vertebra::disable_logging
-    
+
     logger = Vertebra.class_eval('@@logger')
     Vertebra::SwallowEverything.should === logger
   end

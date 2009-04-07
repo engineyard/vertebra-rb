@@ -27,7 +27,7 @@ module Vertebra
     def token
       attributes['token']
     end
-    
+
     def to_iq(from = '')
       iq = LM::Message.new(from, LM::MessageType::IQ, LM::MessageSubType::SET)
       iq.node.raw_mode = false

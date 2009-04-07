@@ -90,13 +90,13 @@ module MockActor
 
       bit
     end
-    
+
     bind_op "/list/letters"
     desc "Get a list of letters; the list will be a given size, defaulting to 26, but alterable with a size option"
     def letters2(args)
       size = args['size'].to_i
       size = 26 if size == 0
-      
+
       lambda do |acc, n| # This is a silly technique for something this simple, but it's kind cool.
         acc << ('a'..'z').to_a.join[rand(26)].chr
         n -= 1

@@ -18,7 +18,7 @@
 # This file is a reimplementation of xmpp4r's rexmladdons. As such, it depends
 # on some parts of REXML.
 
-require 'vertebra/deferrable' 
+require 'vertebra/deferrable'
 
 module Vertebra
   class SetCallbackFailed < Exception; end
@@ -33,7 +33,7 @@ module Vertebra
     def []=(key, val)
       (@_data ||= {})[key] = val
     end
-    
+
     def has_key?(k)
       (@_data ||= {}).has_key?(k)
     end

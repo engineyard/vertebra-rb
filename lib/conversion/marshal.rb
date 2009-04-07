@@ -44,7 +44,7 @@ module Vertebra
         # list grows, it may be worthwhile to explore replacing what could
         # become a very, very long case statement with something like a
         # dispatch table to get constant time performance.
-        
+
         case value
         when Fixnum
           el = Element.new("i4")
@@ -142,7 +142,7 @@ module Vertebra
           exception_data = {:class => value.class.name, :message => value.message, :backtrace => value.backtrace}
           encode_pair(name, exception_data)
 
-        else 
+        else
           # It seems reasonable that if an object is not specially handled, and if it supports a to_s
           # method, it will just be treated as a string instead of throwing an exception.
           if value.respond_to?(:to_str)

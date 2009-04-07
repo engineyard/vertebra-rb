@@ -1,11 +1,11 @@
 module Vertebra
   class ActorSynapse < Synapse
-    
+
     def initialize(agent)
       @agent = agent
       super()
     end
-    
+
     def action(*args, &block)
       condition do
         begin
@@ -14,7 +14,7 @@ module Vertebra
         rescue Exception => e
           error = e
         end
-        
+
         if Vertebra::Synapse === result
           # The action returned a deferrable, so it'll queue the deferrable
           result.set_deferred_status = nil
@@ -26,8 +26,7 @@ module Vertebra
           :succeeded
         end
       end
-      
+
     end
   end
 end
-  

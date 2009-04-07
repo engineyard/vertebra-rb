@@ -21,11 +21,11 @@ require 'vertebra'
 require 'vertebra/actors/core'
 
 describe Vertebra::Actors::Core do
-  
+
   before(:all) do
     @actor = Vertebra::Actors::Core.new(nil, nil, nil)
   end
-  
+
   it 'should provide /core resource' do
     @actor.provided_resources.to_hash.should == {"core" => [Vertebra::Resource.parse('/core')]}
   end

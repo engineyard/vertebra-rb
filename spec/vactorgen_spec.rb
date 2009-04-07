@@ -18,7 +18,7 @@
 require 'fileutils'
 
 describe 'vactorgen. The vertebra actor generator' do
-  
+
   tempdir = "/tmp/vertebra_spec_vactorgen_test_#{$$}"
 
   it 'vactorgen smoketest' do

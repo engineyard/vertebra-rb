@@ -25,16 +25,16 @@ end
 module Vertebra
   # Choose a unique name for the class that indicates which resource or actor
   # that the runner is intended to work with.
-  
+
   class VGem < BaseRunner
-  
+
     # @@global_method_options specifies options that exist for all actor
     # invocation methods.  See the documentation on method_options in the
     # actor_template.rb file, or examine the Thor documentation if you
     # don't understand how these options work.
-    
+
     @@global_method_options = {:node => :optional, :cluster => :required, :only_nodes => :boolean, :slice => :optional}
-      
+
     # In a lot of cases, the information that was already given in the actor
     # class is sufficient to define a runner task for calling the op. The
     # inherit_from_actor call will generate default tasks from all of the
@@ -50,14 +50,14 @@ module Vertebra
 
     # As with an actor, a 'desc' clause associates a command with a short
     # description of what it does.
- 
+
     desc "list", "Get a list of gems"
 
     # Also as wtih an actor, the 'all_method_options' clause describes which
     # method parameters MAY be present, and which MUST be present.
-    
+
     all_method_options :filter => :optional
-    
+
     # It is quite likely, even if one is doing processing on the result set
     # that is returned, that the description and method options for the runner
     # task will be the same as what was specified for an actor.  If that is
@@ -75,7 +75,7 @@ module Vertebra
     # which implement functionality for it should appear.  Just like with
     # actors, these methods should take a single argument which defaults to a
     # hash.
-    
+
     def list(opts = {})
       gems = broadcast('list', '/gem', opts)
       gems.each { |host, gems| puts "\n#{host}";puts "---"; puts gems.is_a?(Array) ? gems.join("\n") : gems }

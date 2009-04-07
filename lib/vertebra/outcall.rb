@@ -85,7 +85,7 @@ module Vertebra
       nexter.condition do
         op.done? ? :succeeded : :deferred
       end
-      
+
       nexter.callback do
         if op.state == :commit
           discoverer[:results] = op.results
@@ -101,9 +101,9 @@ module Vertebra
             # of ALL of the errors that were received?
             discoverer[:results] = [:error, "Operation Failed"]
           end
-        end        
+        end
       end
-      
+
       @agent.enqueue_synapse(nexter)
     end
 

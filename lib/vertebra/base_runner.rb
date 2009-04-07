@@ -75,7 +75,7 @@ ECODE
     def self.describe_from_actor(task_name)
       task = @actor_class.instance_variable_get(:@tasks)[task_name]
       return unless task
-      
+
       parts = task.usage.split('/')
       resource = "/#{parts.first}"
       op = "/#{parts[1..-1].join('/')}"

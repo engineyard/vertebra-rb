@@ -6,11 +6,11 @@ require File.dirname(__FILE__) + '/spec_helper'
 require '<%= @config[:name] %>/actor'
 
 describe <%= @config[:class_name] %>::Actor do
-  
+
   before(:all) do
     @actor = <%= @config[:class_name] %>::Actor.new
   end
-  
+
     <%=
       r = ''
       @config[:operations].each do |op|

@@ -44,11 +44,6 @@ Spec::Rake::SpecTask.new("unit") do |t|
   t.spec_files = FileList["spec/**/*_spec.rb"]
 end
 
-desc "Run all specs with bacon"
-task :bacon do
-  sh "bacon #{Dir["spec/**/*_spec.rb"].join(" ")}"
-end
-
 desc "install the gem locally"
 task :install => [:package] do
   sh %{sudo gem install pkg/#{GEM}-#{GEM_VERSION} --no-update-sources}
@@ -66,8 +61,4 @@ task :make_spec do
   end
 end
 
-desc "get help"
-task :default do
-  output = `rake -T`
-  puts output.split("\n")[1..-1].join("\n")
-end
+task :default => :unit

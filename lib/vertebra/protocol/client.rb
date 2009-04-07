@@ -74,7 +74,7 @@ module Vertebra
           op_lm.add_child el
         end
         logger.debug "CREATED IQ #{iq.node.to_s} with class #{iq.class}"
-        
+
         @outcall.packet_memory.set(job.to, job.token, iq.node['id'], iq)
         @outcall.add_client(job.token, self)
 
@@ -102,7 +102,7 @@ module Vertebra
         resender.callback do
           @outcall.send_iq(@last_message_sent)
         end
-        
+
         # This algorithm provides for a slowly increasing delay between sends.
         EM.add_timer((Math.log(delay + 0.1)).to_i) { @outcall.enqueue_synapse(resender) }
       end
@@ -117,7 +117,7 @@ module Vertebra
           @state = :authfail
         end
 
-				@last_message_sent = @outcall.send_result(iq.node["from"], iq.node["id"])
+        @last_message_sent = @outcall.send_result(iq.node["from"], iq.node["id"])
       end
 
       def process_data_or_final(iq, stanza_type, stanza)
@@ -140,7 +140,7 @@ module Vertebra
           @outcall.remove_client(@token)
         end
 
-				@last_message_sent = @outcall.send_result(iq.node["from"], iq.node["id"])
+        @last_message_sent = @outcall.send_result(iq.node["from"], iq.node["id"])
       end
 
       def results

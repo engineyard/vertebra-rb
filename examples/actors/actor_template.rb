@@ -44,7 +44,7 @@ module VertebraYOURTOOL # e.x. VertebraGemTool or VertebraXen or VertebraMarcoPo
     # included in the <op> request as well as those which MAY be included.
 
     method_options :thing => :optional, :widget => :required
-    
+
     # After using the DSL clauses to describe the op, it is good practice to
     # follow the descriptive clauses with the method or methods which provide
     # the operations functionality.  All operation methods must take a single
@@ -52,7 +52,7 @@ module VertebraYOURTOOL # e.x. VertebraGemTool or VertebraXen or VertebraMarcoPo
     # The return value of the method will be marshalled into XML and sent back
     # over the wire to the requesting agent.  See Vertebra::Marshal for
     # specific information regarding how different object types are marshaled.
-    
+
     def op_method_name(options = {})
       thing = options['thing']
       widget = options['widget']

@@ -174,7 +174,7 @@ module Vertebra
               logger.debug e.backtrace.inspect
               method_result = e
             end
-            
+
             r << method_result
             @agent.enqueue_synapse(method_result) if Vertebra::Synapse === method_result
           end
