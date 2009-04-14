@@ -90,7 +90,7 @@ module Vertebra
             end
           end
 
-          exception = Vertebra::Utils.constant(klass).new(message)
+          exception = (Vertebra::Utils.constant(klass) || Exception).new(message)
           exception.set_backtrace(backtrace)
           exception
         when "list"
