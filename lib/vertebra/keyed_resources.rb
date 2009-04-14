@@ -24,8 +24,19 @@ module Vertebra
         @set = Set.new
       end
 
-      def add(resource)
-        @set << Vertebra::Resource.parse(resource)
+      def add(value)
+        case value
+        when Array
+          value.each do |r|
+            add(r)
+          end
+        when String
+          add(Resource.parse(value))
+        when Resource
+          @set << value
+        else
+          raise ArgumentError, "#{value.inspect} must be either an Array, Resource or String"
+        end
       end
 
       def matches?(resource)
