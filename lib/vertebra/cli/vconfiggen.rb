@@ -1,0 +1,195 @@
+# Copyright 2008, Engine Yard, Inc.
+#
+# This file is part of Vertebra.
+#
+# Vertebra is free software: you can redistribute it and/or modify it under the
+# terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# Vertebra is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
+
+# This file is a reimplementation of xmpp4r's rexmladdons. As such, it depends
+# on some parts of REXML.
+
+require 'rubygems'
+require 'optparse'
+require 'readline'
+require 'vertebra/generator_core'
+
+class PrivateString < String
+  def camelCase
+    return self if self == ''
+    parts = split(/[_\s]/)
+    PrivateString.new(([parts[0].to_s.downcase] + parts[1..-1].collect {|x| x.capitalize}).join)
+  end
+
+  def constantCase
+    return self if self == '' or (self =~ /^[A-Z]/ and self !~ /[_\s]/)
+    tmp = camelCase
+    tmp[0] = tmp[0].chr.upcase
+    PrivateString.new(tmp)
+  end
+end
+
+module Vertebra
+  module CLI
+    class VConfigGen
+      def self.parse_options(args)
+        @config = {
+          :vertebra_destination_dir => '/etc/vertebra',
+                   :ejabberd_destination_dir => '/etc/ejabberd',
+                   :verbose => false,
+                   :dryrun => false,
+                   :safe => true,
+                   :noquestions => false,
+                   :admin => 'admin',
+                   :other_admins => [],
+                   :agent_log_path => '/var/log/vertebra/agent.log'
+        }
+
+        OptionParser.new do |opts|
+          opts.banner = 'Usage: vconfiggen [options] [file1, file2, filen]'
+          opts.separator ''
+
+          opts.on('-v','--verbose','Be wordy when giving feedback about what is happening') do |conf|
+            @config[:verbose] = true
+          end
+
+          opts.on('--dry-run',"Walk through the whole process, but don't actually create anything.") do |conf|
+            @config[:dryrun] = true
+          end
+
+          opts.on('-q','--no-questions', "Don't ask questions; just accept items loaded from the config file, if any, and the command line.") do |conf|
+            @config[:noquestions] = true
+          end
+
+          opts.on('-s','--safe [true/false]',"When in safe mode, existing files will not be overwritten.  This defaults to true.") do |conf|
+            @config[:safe] = conf !~ /^\s*(?:false|no?)\s*$/i
+          end
+
+          opts.on('--vertebra-dir [DIR]','The configuration directory for vertebra.  This defaults to "/etc/vertebra".') do |conf|
+            @config[:vertebra_destination_dir] = conf
+          end
+
+          opts.on('--agent-log-path [PATH]','The path to the file that the an agent should log to.') do |conf|
+            @config[:url] = conf
+          end
+
+          opts.on('--ejabberd-dir [DIR]','The configuration directory for ejabberd.  This defaults to "/etc/ejabberd".') do |conf|
+            @config[:ejabberd_destination_dir] = conf
+          end
+
+          opts.on('-a','--admin-user [ADMIN]','The ejabberd admin user.  This defaults to "admin".') do |conf|
+            @config[:admin] = conf
+          end
+
+          opts.on('--other-admins [OTHER]','This is a comman separated list of any other id\'s to setup in the ejabberd config.') do |conf|
+            @config[:other_admins] = conf.split(/\s*,\s*/)
+          end
+
+          opts.on('-f','--config-file [FILENAME]','Read the supplied config file for options') do |conf|
+            require 'yaml'
+            begin
+              new_config = YAML.load(File.read(conf))
+            rescue Errno::ENOENT => e
+              puts "The config file (#{conf}) could not be read.  Exiting.\n\n#{e}\n\n"
+              exit
+            end
+
+            unless Hash === new_config
+              puts "The format of the config file (#{conf}) appears to be incorrect.  Eiting.\n\n"
+              exit
+            end
+
+            @config = new_config.merge(@config)
+          end
+        end.parse!(args)
+        filenames = args.reject {|f| f =~ /^\s*$/}
+        @config[:specific_files] = filenames unless filenames.empty?
+      end
+
+      def self.walk_through_questions
+        line = Readline::readline("Directory for the Vertebra configuration files [#{@config[:vertebra_destination_dir]}]: ")
+        @config[:vertebra_destination_dir] = line.strip if !line.strip.empty?
+        @config[:vertebra_destination_dir] = File.expand_path(@config[:vertebra_destination_dir])
+
+        if FileTest.exist?(@config[:vertebra_destination_dir])
+          line = Readline::readline("The directory (#{@config[:vertebra_destination_dir]}) already exists; continue [No]? ")
+          unless line =~ /^\s*y/i
+            puts "Exiting from the vertebra config file generator because the directory (#{@config[:vertebra_destination_dir]}) already exists."
+            exit
+          else
+            line = Readline::readline("Use safe mode to prevent overwriting of existing config files [#{@config[:safe] ? 'Yes' : 'No'}]: ")
+            @config[:safe] = false if line =~ /^\s*(?:no?|false)\s*$/i
+          end
+        end
+
+        line = Readline::readline("Directory for the ejabberd configuration files [#{@config[:ejabberd_destination_dir]}]: ")
+
+        @config[:ejabberd_destination_dir] = line.strip if !line.strip.empty?
+        @config[:ejabberd_destination_dir] = File.expand_path(@config[:ejabberd_destination_dir])
+
+        if FileTest.exist?(@config[:ejabberd_destination_dir])
+          line = Readline::readline("The directory (#{@config[:ejabberd_destination_dir]}) already exists; continue [No]? ")
+          unless line =~ /^\s*y/i
+            puts "Exiting from the vertebra config file generator because the directory (#{@config[:ejabberd_destination_dir]}) already exists."
+            exit
+          else
+            line = Readline::readline("Use safe mode to prevent overwriting of existing config files [#{@config[:safe] ? 'Yes' : 'No'}]: ")
+            @config[:safe] = false if line =~ /^\s*(?:no?|false)\s*$/i
+          end
+        end
+
+        line = Readline::readline("Logging path for the ruby agents [#{@config[:agent_log_path]}]: ")
+        if !line.strip.empty?
+          @config[:agent_log_path] = line.strip
+        end
+
+        line = Readline::readline("Ejabberd admin user [#{@config[:admin]}]: ")
+        if !line.strip.empty?
+          @config[:admin] = line.strip
+        end
+
+        puts "Other ejabberd admin ids.  When all additional admin ids have been provided, enter a blank line to continue."
+        puts "Currently defined additional admins: #{@config[:other_admins].join("\n")}" if @config[:other_admins] and !@config[:other_admins].empty?
+
+        loop do
+          line = Readline::readline("> ")
+          break if line.strip.empty?
+
+          @config[:other_admins] << line.strip
+        end
+      end
+
+      def self.generate_actor
+        app = 'vconfiggen'
+
+        # Generate the vertebra configs.
+        @config[:destination_dir] = @config[:vertebra_destination_dir]
+        @config[:skeleton_dir] = GeneratorCore::skeleton_dir(app, '/etc/vertebra')
+        @config[:config_alias] = ['@config']
+        GeneratorCore::generate_files(@config)
+
+        # Generate the ejabberd configs.
+        @config[:destination_dir] = @config[:ejabberd_destination_dir]
+        @config[:skeleton_dir] = GeneratorCore::skeleton_dir(app, '/etc/ejabberd')
+        @config[:config_alias] = ['@config']
+        GeneratorCore::generate_files(@config)
+      end
+
+      def self.run(args = ARGV)
+        parse_options(args)
+        walk_through_questions unless @config[:noquestions]
+
+        generate_actor
+      end
+    end
+  end
+end

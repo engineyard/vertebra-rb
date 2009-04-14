@@ -14,6 +14,5 @@
 # other command line arguments to pass to the operation.
 
 require File.dirname(__FILE__) + '/../lib/vertebra'
-require 'vertebra/vertebra_cli'
-
-Vertebra::VertebraCLI.run
+require 'vertebra/cli/main'
+Vertebra::CLI::Main.run

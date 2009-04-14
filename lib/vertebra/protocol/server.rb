@@ -51,7 +51,7 @@ module Vertebra
         op_node["token"] = token
 
         element = REXML::Document.new(op_node.to_s).root
-        args = Vertebra::Marshal.decode(element)
+        args = Vertebra::Conversion::Marshal.decode(element)
         @job = Job.new(Resource.parse(op_node['type']), token, op_node['scope'], iq.node['from'], iq.node['to'], args)
         logger.debug "New job is #{@job.inspect}"
 
@@ -166,7 +166,7 @@ module Vertebra
 
                 logger.debug "RESULT: #{result.inspect}"
                 result_tag = Vertebra::Data.new(token)
-                Vertebra::Marshal.encode({:response => result}).children.each do |child|
+                Vertebra::Conversion::Marshal.encode({:response => result}).children.each do |child|
                   result_tag.add(child)
                 end
                 logger.debug "ADDING: #{result_tag}"

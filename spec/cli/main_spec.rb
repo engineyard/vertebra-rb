@@ -15,19 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
-require File.dirname(__FILE__) + '/spec_helper'
-require 'vertebra/vertebra_cli'
-require 'tempfile'
-require 'stringio'
-
-describe Vertebra do
-  it "can disable the logger" do
-    Vertebra::disable_logging
-
-    logger = Vertebra.class_eval('@@logger')
-    Vertebra::SwallowEverything.should === logger
-  end
-end
+require File.dirname(__FILE__) + '/../spec_helper'
+require 'vertebra/cli/main'
 
 describe Vertebra::SwallowEverything do
   it "swallows anything and everything called on it" do
@@ -38,7 +27,7 @@ describe Vertebra::SwallowEverything do
   end
 end
 
-describe Vertebra::VertebraCLI do
+describe Vertebra::CLI::Main do
   it "#dispatch_request" do
     pending "not implemented"
   end

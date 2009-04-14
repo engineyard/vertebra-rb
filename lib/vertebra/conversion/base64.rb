@@ -15,18 +15,36 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
-require File.dirname(__FILE__) + '/../actor'
-
 module Vertebra
-  module Actors
-    class Core < Vertebra::Actor
+  module Conversion
+    class Base64
 
-      provides 'core' => '/core'
+      def initialize(str, state = :dec)
+        case state
+        when :enc
+          @str = Base64.decode(str.to_s)
+        when :dec
+          @str = str.to_s
+        else
+          raise ArgumentError, "wrong argument; either :enc or :dec"
+        end
+      end
 
-      def quit(options = {})
-        Thread.new{ sleep 2; exit! }
-        logger.info "Restarting agent."
-        "Restarting agent"
+      def decoded
+        @str
+      end
+
+      def encoded
+        Base64.encode(@str)
+      end
+
+
+      def self.decode(str)
+        str.to_s.gsub(/\s+/, "").unpack("m")[0]
+      end
+
+      def self.encode(str)
+        [str.to_s].pack("m")
       end
     end
   end
