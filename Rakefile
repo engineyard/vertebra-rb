@@ -6,7 +6,7 @@ require 'rake/testtask'
 require "spec/rake/spectask"
 
 GEM = "vertebra"
-GEM_VERSION = "0.4.5"
+GEM_VERSION = "0.4.6"
 AUTHOR = "Engine Yard, Inc."
 EMAIL = "vertebra-dev@googlegroups.com"
 HOMEPAGE = "http://vertebra.engineyard.com"
