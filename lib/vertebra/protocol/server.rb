@@ -166,7 +166,16 @@ module Vertebra
 
                 logger.debug "RESULT: #{result.inspect}"
                 result_tag = Vertebra::Data.new(token)
-                Vertebra::Marshal.encode({:response => result}).children.each do |child|
+                if Hash === result
+                  response = result
+                elsif Exception === result
+                  response = {:error => result}
+                else
+                  # Intended as a compatibility layer for existing actors which do not return hashes;
+                  # this may disappear in the future.
+                  response = {:response => result}
+                end
+                Vertebra::Marshal.encode(response).children.each do |child|
                   result_tag.add(child)
                 end
                 logger.debug "ADDING: #{result_tag}"

@@ -60,5 +60,12 @@ describe Vertebra::Marshal do
     Vertebra::Marshal.decode(REXML::Document.new("<struct name='result'><i4 name='value'>2</i4></struct>")).should == {'result' => {'value' => 2}}
   end
 
-end
+  it 'marshals and unmarshals an exception' do
+    original_exception = RuntimeError.new('boom')
+    encoded_exception = Vertebra::Marshal.encode({'exception' => original_exception})
+    decoded_exception = Vertebra::Marshal.decode(encoded_exception)
+    original_exception.class.should == decoded_exception['exception'].class
+    original_exception.message.should == decoded_exception['exception'].message
+  end
 
+end

@@ -127,7 +127,7 @@ module Vertebra
       end
       requestor.callback do
         unless client.results.empty?
-          yield client.results['response']['jids']
+          yield client.results['jids']
         else
           yield []
         end

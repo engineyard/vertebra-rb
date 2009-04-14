@@ -21,10 +21,10 @@ module <%= @config[:class_name] %>
         meth_name = op.tr('/','_')[1..-1]
 
         r << <<EMETHODS
-    bind_op "#{op}", :#{meth_name}
-    desc "#{op}", "#{op} action description"
+    bind_op "#{op}"
+    desc "#{op} action description"
     #method_options :param1 => :optional, :param2 => :required
-    def #{meth_name}(options = {})
+    def #{meth_name}(options = {}, job)
     end
 
 EMETHODS

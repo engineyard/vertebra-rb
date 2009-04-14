@@ -104,6 +104,14 @@ module MockActor
       end.call('',size)
     end
 
+    bind_op "/list/cipher"
+    desc "Returns a hash of letters and numbers"
+    def cipher(args)
+      h = {}
+      %w{ a b c d e f g h i j k l m n o p q r s t u v w x y z }.sort_by {rand}.each_with_index {|v,i| h[v] = i}
+      h
+    end
+
     bind_op "/list/kaboom"
     desc "Doesn't actually do anything other than raise an exception"
     def kaboom(args)

@@ -16,6 +16,8 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/spec_helper'
+$: << "#{File.dirname(__FILE__)}/mocks"
+puts $:.inspect
 require 'vertebra'
 require 'vertebra/agent'
 require 'vertebra/packet_memory'
@@ -24,10 +26,13 @@ require 'vertebra/synapse_queue'
 # Specs to test the protocol portion of Vertebra.
 
 class Mock
-  attr_accessor :packet_memory
+  attr_accessor :packet_memory, :servers, :dispatcher
 
   def initialize
     @packet_memory = Vertebra::PacketMemory.new
+    @servers = {}
+    @dispatcher = Vertebra::Dispatcher.new(self, Vertebra::KeyedResources.new)
+    @dispatcher.register ["mock_actor/actor"]
     yield(self) if block_given?
   end
 
@@ -163,4 +168,82 @@ describe Vertebra::Protocol::Client do
 end
 
 describe Vertebra::Protocol::Server do
+  AGENT_JID = "agent@example.com"
+  REMOTE_JID = "test@example.com"
+  DEFAULT_ID = "42"
+
+  before :each do
+    @synapses = synapses = Vertebra::SynapseQueue.new
+    $jid = $id = $children = nil
+
+    @agent = Mock.new do |mock|
+      mock.def(:connection_is_open_and_authenticated?) {true}
+      mock.def(:jid) {AGENT_JID}
+      mock.def(:remove_client) {|token| }
+      mock.def(:send_iq) {|iq| }
+      mock.def(:send_result) {|*args| $jid, $id, $children, indirect_block, direct_block = args}
+      mock.def(:send_iq_with_synapse) {|iq, protocol| }
+      mock.def(:add_client) {|token, client| }
+      mock.def(:enqueue_synapse) {|synapse| synapses << synapse}
+      mock.def(:do_or_enqueue_synapse) {|synapse| synapses << synapse}
+      mock.def(:parse_token) {|node| }
+    end
+  end
+
+  # All actors should return their results in a Hash.
+  it 'Should execute an actor method that returns a Hash, and return a response' do
+    iq = LM::Message.new(REMOTE_JID,LM::MessageType::IQ,LM::MessageSubType::SET)
+    iq.node.add_child('op')
+    iq.node.child['scope'] = 'all'
+    iq.node.child['token'] = 'd6ebe3c400caed1419df2698f0adbb2a'
+    iq.node.child['type'] = '/list/cipher'
+    iq.node.child['xmlns'] = 'http://xmlschema.engineyard.com/agent/api'
+
+    actual_iq = nil
+    @agent.def(:send_iq) {|iq| actual_iq = iq}
+    server = Vertebra::Stanza.handle(@agent, iq)
+    dispatcher = server.process_operation
+    4.times { @synapses.fire }
+    response = Vertebra::Marshal.decode(actual_iq.node.child)
+    response.keys.sort.should == %w{ a b c d e f g h i j k l m n o p q r s t u v w x y z }
+  end
+
+  # Actors which do not return hashes should be avoided.
+  it "Should execute an actor method that doesn't return a Hash, and return a response" do
+    iq = LM::Message.new(REMOTE_JID,LM::MessageType::IQ,LM::MessageSubType::SET)
+    iq.node.add_child('op')
+    iq.node.child['scope'] = 'all'
+    iq.node.child['token'] = 'd6ebe3c400caed1419df2698f0adbb2b'
+    iq.node.child['type'] = '/list/numbers'
+    iq.node.child['xmlns'] = 'http://xmlschema.engineyard.com/agent/api'
+
+    actual_iq = nil
+    @agent.def(:send_iq) {|iq| actual_iq = iq}
+    server = Vertebra::Stanza.handle(@agent, iq)
+    dispatcher = server.process_operation
+    4.times { @synapses.fire }
+    response = Vertebra::Marshal.decode(actual_iq.node.child)['response']
+    response.should == [1,2,3]
+  end
+
+  it 'Should handle an actor method that throws an exception, and return an exception' do
+    iq = LM::Message.new(REMOTE_JID,LM::MessageType::IQ,LM::MessageSubType::SET)
+    iq.node.add_child('op')
+    iq.node.child['scope'] = 'all'
+    iq.node.child['token'] = 'd6ebe3c400caed1419df2698f0adbb2c'
+    iq.node.child['type'] = '/list/kaboom'
+    iq.node.child['xmlns'] = 'http://xmlschema.engineyard.com/agent/api'
+
+    actual_iq = nil
+    @agent.def(:send_iq) {|iq| actual_iq = iq}
+    server = Vertebra::Stanza.handle(@agent, iq)
+    dispatcher = server.process_operation
+    4.times { @synapses.fire }
+    decoded_response = Vertebra::Marshal.decode(actual_iq.node.child)
+    decoded_response.keys.should == ['error']
+    error = decoded_response['error']
+    error.class.should == RuntimeError
+    error.message.should == 'Kaboom!'
+  end
+
 end

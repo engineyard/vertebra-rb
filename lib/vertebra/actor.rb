@@ -36,6 +36,7 @@ module Vertebra
         @description = description
       end
 
+      # Note: methods added after a given bind_op call are associated with the op given in the bind_op call.
       def bind_op(operation)
         @operations ||= []
         @operations << Vertebra::Resource.parse(operation)
