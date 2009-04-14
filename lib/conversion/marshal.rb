@@ -139,9 +139,12 @@ module Vertebra
           el
 
         when Exception
-          exception_data = {:class => value.class.name, :message => value.message, :backtrace => value.backtrace}
-          encode_pair(name, exception_data)
-
+          el = Element.new('exception')
+          el.attributes['name'] = name.to_s unless name.nil?
+          el.add_element encode_pair('class',value.class.name)
+          el.add_element encode_pair('message',value.message)
+          el.add_element encode_pair('backtrace',value.backtrace)
+          el
         else
           # It seems reasonable that if an object is not specially handled, and if it supports a to_s
           # method, it will just be treated as a string instead of throwing an exception.

@@ -17,6 +17,7 @@
 
 require 'rexml/document'
 require 'rexml/xpath'
+require 'vertebra/extensions'
 
 module Vertebra
   module Marshal
@@ -32,7 +33,9 @@ module Vertebra
         else
           child = message.child
           while child
-            hsh[name] = decode_element(child) if name = child.get_attribute('name')
+            if name = child.get_attribute('name')
+              hsh[name] = decode_element(child)
+            end
             child = child.next
           end
         end
@@ -42,13 +45,13 @@ module Vertebra
       def decode_element(el)
         case el.name
         when "string"
-          el.text
+          (REXML::Element === el ? el.text : el.value).to_s
         when 'nil'
           nil
         when "res"
           resource(REXML::Element === el ? el.text : el.value)
         when "i4"
-          el.text.to_i
+          (REXML::Element === el ? el.text : el.value).to_i
         when "boolean"
           boolean(REXML::Element === el ? el.text : el.value)
         when "base64"
@@ -57,6 +60,39 @@ module Vertebra
           el.text.to_f
         when "dateTime.iso8601"
           dateTime(REXML::Element === el ? el.text : el.value)
+        when "exception"
+          klass = 'Exception'
+          message = 'Vertebra Error'
+          backtrace = []
+          if REXML::Element === el
+            el.each_element do |child|
+              case child.attributes['name']
+              when 'class'
+                klass = child.text
+              when 'message'
+                message = child.text
+              when 'backtrace'
+                backtrace = decode_element(child)
+              end
+            end
+          else
+            child = el.child
+            while child
+              case child['name']
+              when 'class'
+                klass = child.value
+              when 'message'
+                message = child.value
+              when 'backtrace'
+                backtrace = decode_element(child)
+              end
+              child = child.next
+            end
+          end
+
+          exception = Vertebra::Utils.constant(klass).new(message)
+          exception.set_backtrace(backtrace)
+          exception
         when "list"
           arr = []
           if REXML::Element === el
