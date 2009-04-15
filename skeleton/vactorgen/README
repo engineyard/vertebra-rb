@@ -1,6 +1,0 @@
-<%= @config[:name] %>
-============
-
-<%= @config[:description] %>
-
-Document your actor here.

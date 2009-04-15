@@ -16,6 +16,7 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'vertebra/herault/advert_cache'
+require 'pp'
 
 module Vertebra
   module Herault

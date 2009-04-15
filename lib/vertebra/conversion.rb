@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'conversion/base64'
-require 'conversion/datetime'
-require 'conversion/marshal'
-require 'conversion/unmarshal'
-require 'vertebra/resource'
-require 'vertebra/extensions'
+require 'vertebra/conversion/base64'
+require 'vertebra/conversion/datetime'
+require 'vertebra/conversion/marshal'
+require 'vertebra/conversion/unmarshal'

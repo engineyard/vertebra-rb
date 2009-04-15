@@ -16,7 +16,7 @@
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
 require File.dirname(__FILE__) + '/spec_helper'
-require 'conversion'
+require 'vertebra/conversion'
 
 TYPES = ['string', 'nil', 'res', 'i4', 'boolean', 'base64', 'double', 'dateTime.iso8601', 'list', 'struct']
 
@@ -46,24 +46,24 @@ TYPES = ['string', 'nil', 'res', 'i4', 'boolean', 'base64', 'double', 'dateTime.
 # p e = Vertebra::Marshal.decode( xml)
 # p e.size
 
-describe Vertebra::Marshal do
+describe Vertebra::Conversion::Marshal do
   it 'encodes a simple string' do
-    r = Vertebra::Marshal.encode("abc")
+    r = Vertebra::Conversion::Marshal.encode("abc")
     puts r
   end
 
   it 'return an empty hash when given a top-level element without a name attribute' do
-    Vertebra::Marshal.decode(REXML::Document.new("<struct><i4>2</i4></struct>")).should == {}
+    Vertebra::Conversion::Marshal.decode(REXML::Document.new("<struct><i4>2</i4></struct>")).should == {}
   end
 
   it 'when given a struct element should return a valued hash nested in a hash' do
-    Vertebra::Marshal.decode(REXML::Document.new("<struct name='result'><i4 name='value'>2</i4></struct>")).should == {'result' => {'value' => 2}}
+    Vertebra::Conversion::Marshal.decode(REXML::Document.new("<struct name='result'><i4 name='value'>2</i4></struct>")).should == {'result' => {'value' => 2}}
   end
 
   it 'marshals and unmarshals an exception' do
     original_exception = RuntimeError.new('boom')
-    encoded_exception = Vertebra::Marshal.encode({'exception' => original_exception})
-    decoded_exception = Vertebra::Marshal.decode(encoded_exception)
+    encoded_exception = Vertebra::Conversion::Marshal.encode({'exception' => original_exception})
+    decoded_exception = Vertebra::Conversion::Marshal.decode(encoded_exception)
     original_exception.class.should == decoded_exception['exception'].class
     original_exception.message.should == decoded_exception['exception'].message
   end

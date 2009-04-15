@@ -204,7 +204,7 @@ describe Vertebra::Protocol::Server do
     server = Vertebra::Stanza.handle(@agent, iq)
     dispatcher = server.process_operation
     4.times { @synapses.fire }
-    response = Vertebra::Marshal.decode(actual_iq.node.child)
+    response = Vertebra::Conversion::Marshal.decode(actual_iq.node.child)
     response.keys.sort.should == %w{ a b c d e f g h i j k l m n o p q r s t u v w x y z }
   end
 
@@ -222,7 +222,7 @@ describe Vertebra::Protocol::Server do
     server = Vertebra::Stanza.handle(@agent, iq)
     dispatcher = server.process_operation
     4.times { @synapses.fire }
-    response = Vertebra::Marshal.decode(actual_iq.node.child)['response']
+    response = Vertebra::Conversion::Marshal.decode(actual_iq.node.child)['response']
     response.should == [1,2,3]
   end
 
@@ -239,7 +239,7 @@ describe Vertebra::Protocol::Server do
     server = Vertebra::Stanza.handle(@agent, iq)
     dispatcher = server.process_operation
     4.times { @synapses.fire }
-    decoded_response = Vertebra::Marshal.decode(actual_iq.node.child)
+    decoded_response = Vertebra::Conversion::Marshal.decode(actual_iq.node.child)
     decoded_response.keys.should == ['error']
     error = decoded_response['error']
     error.class.should == RuntimeError

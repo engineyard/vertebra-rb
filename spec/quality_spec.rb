@@ -47,7 +47,7 @@ describe "The library itself" do
     end
   end
 
-  it "has no tab characters" do
+  it "has no malformed lines of code" do
     Dir.chdir(File.dirname(__FILE__) + '/..') do
       Dir.glob("**/*.rb").each do |filename|
         filename.should have_no_tab_characters

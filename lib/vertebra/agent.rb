@@ -85,8 +85,8 @@ module Vertebra
       unless deployment_resources_hash.is_a?(Hash)
         raise ArgumentError, "Deployment resources must be specified as a Hash: got #{deployment_resources_hash.inspect}"
       end
-      deployment_resources_hash.each do |key,resource|
-        deployment_resources.add(key,resource)
+      deployment_resources_hash.each do |key,value|
+        deployment_resources.add(key, value)
       end
 
       @dispatcher = Dispatcher.new(self, deployment_resources)
@@ -485,9 +485,9 @@ module Vertebra
     def provided_operations
       operations = []
       @dispatcher.actors.map do |actor|
-        logger.debug "provided operations: #{actor.provided_operations.inspect}"
         operations += actor.provided_operations.to_a
       end
+      logger.debug "provided operations: #{operations.inspect}"
       operations
     end
 
@@ -496,6 +496,7 @@ module Vertebra
       @dispatcher.actors.map do |actor|
         resources.merge(actor.provided_resources)
       end
+      logger.debug "provided resources: #{resources.inspect}"
       resources.to_hash
     end
 

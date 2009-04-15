@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
+require File.dirname(__FILE__) + '/../spec_helper'
+require 'vertebra/cli/vconfiggen'
 require 'fileutils'
 
 describe 'vconfiggen. The vertebra config generator' do
@@ -23,9 +25,7 @@ describe 'vconfiggen. The vertebra config generator' do
   etempdir = "/tmp/vertebra_spec_vconfiggen_test_e_#{$$}"
 
   it 'vconfiggen smoketest' do
-    ENV['RUBYLIB'] = "#{ENV['RUBYLIB']}:#{File.dirname(__FILE__)}/../lib"
-    command = "#{File.dirname(__FILE__)}/../bin/vconfiggen --no-questions --vertebra-dir #{vtempdir} --ejabberd-dir #{etempdir}"
-    system(command)
+    Vertebra::CLI::VConfigGen.run(["--no-questions", "--vertebra-dir", vtempdir, "--ejabberd-dir", etempdir])
 
     contents = File.read("#{vtempdir}/agent.yml")
     contents.should match(/log_path:/)
@@ -37,8 +37,7 @@ describe 'vconfiggen. The vertebra config generator' do
   # TODO: Write more tests, including tests that generate a single file.
 
   after(:all) do
-    FileUtils::rm_rf(vtempdir)
-    FileUtils::rm_rf(etempdir)
+    FileUtils.rm_rf(vtempdir)
+    FileUtils.rm_rf(etempdir)
   end
-
 end

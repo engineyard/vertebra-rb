@@ -17,25 +17,24 @@
 
 $:.unshift File.dirname(__FILE__)
 
-require File.dirname(__FILE__) + '/../vendor/thor/lib/thor'
-
 require 'drb'
-require 'pp'
 require 'yaml'
 require 'logger'
-require 'conversion'
 
 require 'rubygems'
+require 'loudmouth'
+require 'eventmachine'
+require File.dirname(__FILE__) + '/../vendor/thor/lib/thor'
+
+require 'vertebra/conversion'
 require 'vertebra/xmppelement'
 require 'vertebra/jid'
 require 'vertebra/actor'
-
-require 'loudmouth'
 require 'vertebra/loudmouth_extension'
-require 'eventmachine'
 require 'vertebra/protocol/client'
 require 'vertebra/protocol/server'
 require 'vertebra/logger'
+require 'vertebra/agent'
 require 'vertebra/extensions'
 require 'vertebra/dispatcher'
 require 'vertebra/resource'
@@ -72,9 +71,4 @@ module Vertebra
     ]
     "%04x%04x%04x%04x%04x%06x%06x" % values
   end
-
-  def self.deep_copy(obj)
-    ::Marshal.load(::Marshal.dump(obj))
-  end
-
 end

@@ -70,7 +70,7 @@ module Vertebra
         iq.node.add_child(op)
         op_lm = iq.node.get_child(op.name)
 
-        Vertebra::Marshal.encode(job.args).children.each do |el|
+        Vertebra::Conversion::Marshal.encode(job.args).children.each do |el|
           op_lm.add_child el
         end
         logger.debug "CREATED IQ #{iq.node.to_s} with class #{iq.class}"
@@ -125,13 +125,13 @@ module Vertebra
         case stanza_type
         when :result
           raw_element = REXML::Document.new(stanza.to_s).root
-          (@results ||= []) << Vertebra::Marshal.decode(raw_element)
+          (@results ||= []) << Vertebra::Conversion::Marshal.decode(raw_element)
           raw_element.children.each {|e| raw_element.delete e}
         when :error
           @state = :error
           raw_element = REXML::Document.new(stanza.to_s).root
           results = @results
-          @results = {:error => Vertebra::Marshal.decode(raw_element), :results => results}
+          @results = {:error => Vertebra::Conversion::Marshal.decode(raw_element), :results => results}
           @outcall.remove_client(@token)
         when :final
           @state = :commit
