@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Vertebra.  If not, see <http://www.gnu.org/licenses/>.
 
+require 'vertebra/keyed_resources'
+
 module Vertebra
   class Actor
     class << self
