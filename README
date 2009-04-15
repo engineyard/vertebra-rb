@@ -5,7 +5,10 @@ server.
 
 Agents require an instance of Herault, the discovery and security agent. A very
 basic version of Herault ships with this library. Simply start an agent with
-the provided config file after editing it to meet your satisfaction.
+the provided config file after editing it to meet your satisfaction.  Note that
+you should not configure a herault_jid for the Herault agent (leave it false).
+This will change in the future (at which point your config MUST be updated to
+maintain security), so please watch out for that.
 
  $ bin/vagent start -c config/herault.yml
 
