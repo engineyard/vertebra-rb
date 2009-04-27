@@ -64,6 +64,8 @@ module Vertebra
         initiator.condition { @outcall.connection_is_open_and_authenticated? }
 
         iq = LM::Message.new(job.to, LM::MessageType::IQ, LM::MessageSubType::SET)
+#        token = "#{@job.token}-#{iq.node['id']}"
+#        @job.token = token
         op = Vertebra::Init.new(job.token, job.operation, job.scope)
 
         iq.node['xml:lang'] = 'en'
@@ -76,7 +78,8 @@ module Vertebra
         logger.debug "CREATED IQ #{iq.node.to_s} with class #{iq.class}"
 
         @outcall.packet_memory.set(job.to, job.token, iq.node['id'], iq)
-        @outcall.add_client(job.token, self)
+ #       @outcall.add_client(token, self)
+        @outcall.add_client("#{job.to};#{iq.node['id']}", self)
 
         initiator.callback do
           @last_message_sent = iq

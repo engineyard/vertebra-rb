@@ -91,6 +91,28 @@ module MockActor
       bit
     end
 
+    bind_op "/list/somethingelse"
+    desc "A proxy op that reissues another list op, based upon the arg it is given. ex. :as => 'numbers' "
+    def somethingelse(args)
+      as = args['as'] || 'numbers'
+      op = "/list/#{as}"
+      bit = Vertebra::ActorSynapse.new(@agent)
+
+      bit.action do |synapse|
+        unless bit[:requestor]
+          bit[:requestor] = @agent.request(op, :all)
+        end
+        if bit[:requestor][:results]
+#          bit[:requestor][:results].collect {|r| r.has_key?('response') ? r['response'] : r}
+          bit[:requestor][:results]
+        else
+          synapse
+        end
+      end
+
+      bit
+    end
+
     bind_op "/list/letters"
     desc "Get a list of letters; the list will be a given size, defaulting to 26, but alterable with a size option"
     def letters2(args)

@@ -41,7 +41,7 @@ module Vertebra
             end
           end
         end
-        @agent.enqueue_synapse(discoverer)
+        @agent.do_or_enqueue_synapse(discoverer)
 
         discoverer
       else
@@ -55,13 +55,13 @@ module Vertebra
       gatherer = Vertebra::Synapse.new
       gatherer.condition do
         num_finished = 0
+
         ops.each { |jid, client| num_finished += 1 if client.done? }
         num_finished == ops.size ? :succeeded : :deferred
       end
       gatherer.callback do
         results = []
         ops.each { |jid, client| results << client.results unless client.results.empty? }
-
         discoverer[:results] = results
       end
       enqueue_synapse(gatherer)
@@ -127,7 +127,8 @@ module Vertebra
       end
       requestor.callback do
         unless client.results.empty?
-          yield client.results['jids']
+          agent_jid = @agent.jid.to_s
+          yield client.results['jids'].select {|jid| jid != agent_jid}
         else
           yield []
         end

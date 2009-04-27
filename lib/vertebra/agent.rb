@@ -183,7 +183,6 @@ module Vertebra
     end
 
     def fire_synapses
-      logger.debug "QUEUE: #{@synapse_queue.length}" if @show_synapses
       @synapse_queue.fire(@show_synapses)
     end
 

@@ -18,7 +18,7 @@ module Vertebra
         if Vertebra::Synapse === result
           # The action returned a deferrable, so it'll queue the deferrable
           result.set_deferred_status = nil
-          @agent.enqueue_synapse(result)
+          #@agent.enqueue_synapse(result)
           :deferred
         else
           self[:results] = result unless error

@@ -28,9 +28,10 @@ module Vertebra
       def handle_result
         logger.debug "Got token: #{token.inspect}"
         left, right = token.split(':',2)
-        if client = agent.clients[left]
+        jid_plus_id = "#{iq.node['from']};#{iq.node['id']}"
+        if client = agent.clients[jid_plus_id]
           agent.clients[token] = client
-          agent.clients.delete(left)
+          agent.clients.delete(jid_plus_id)
           client.is_ready(token)
         else
           logger.warn "No client found with token: #{left.inspect}"

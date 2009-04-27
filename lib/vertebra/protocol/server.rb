@@ -134,8 +134,6 @@ module Vertebra
       end
 
       def process_operation
-        # TODO: somehow this will have to be decoupled so that a long running op
-        # can defer itself so that the event loop is not blocked.
         # This code also needs to be refactored so it's not quite so bugly.
 
         @state = :producing
@@ -191,6 +189,13 @@ module Vertebra
               notifier = Vertebra::Synapse.new
               notifier.condition { @agent.connection_is_open_and_authenticated? }
 
+              # This doesn't actually work right when there are multiple data stanzas,
+              # since each should be sent as it's generated, and there may be gaps
+              # in time between when one is generated and the next is generated.
+              # The code needs to have a conclusive signal as to when the _last_
+              # data segment has been generated, and trigger the final _after_ that.
+              # This signal is probably when then actor method returns something that
+              # is a non-synapse result.
               notifier.callback do
                 result_iqs.each do |iq|
                   @final_countdown += 1
