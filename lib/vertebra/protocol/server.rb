@@ -44,7 +44,7 @@ module Vertebra
       def initialize(agent, iq)
         @agent = agent
         @state = :new
-        @final_countdown = 0
+        @final_countdown = {}
         @iq = iq
 
         token = op_node['token'].split(':').last << ":#{Vertebra.gen_token}"
@@ -198,7 +198,7 @@ module Vertebra
               # is a non-synapse result.
               notifier.callback do
                 result_iqs.each do |iq|
-                  @final_countdown += 1
+                  @final_countdown[iq.node['id']] = true
                   @agent.packet_memory.set(iq.node['to'], token, iq.node['id'],iq)
                   @agent.send_iq(iq)
                 end
@@ -220,10 +220,10 @@ module Vertebra
         @agent.do_or_enqueue_synapse(dispatcher)
       end
 
-      def process_data_result(iq = nil)
-        @final_countdown -= 1
+      def process_data_result(node = nil)
+        node && @final_countdown.delete(node['id'])
 
-        if @final_countdown <= 0 && @state != :flush
+        if @final_countdown.keys.length == 0 && @state != :flush
           @state = :flush
           final_tag = ::Vertebra::Final.new(token)
           logger.debug "  Send Final"

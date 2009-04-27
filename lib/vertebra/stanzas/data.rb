@@ -41,7 +41,7 @@ module Vertebra
           result_handler[:state] = :result
           result_handler.callback do
             logger.debug "data"
-            server.process_data_result(child_node)
+            server.process_data_result(node)
           end
           agent.enqueue_synapse(result_handler)
         else
