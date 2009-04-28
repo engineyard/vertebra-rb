@@ -20,6 +20,7 @@
 
 require 'optparse'
 require 'yaml'
+require 'vertebra'
 
 module Vertebra
   # This just eats everything called on it.
