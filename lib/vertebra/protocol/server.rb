@@ -40,6 +40,7 @@ module Vertebra
     class Server
 
       attr_accessor :agent, :job, :state, :last_message_sent
+      attr_reader :final_countdown
 
       def initialize(agent, iq)
         @agent = agent
@@ -52,7 +53,7 @@ module Vertebra
 
         element = REXML::Document.new(op_node.to_s).root
         args = Vertebra::Conversion::Marshal.decode(element)
-        @job = Job.new(Resource.parse(op_node['type']), token, op_node['scope'], iq.node['from'], iq.node['to'], args)
+        @job = Job.new(Resource.parse(op_node['type']), token, op_node['scope'], iq.node['from'], iq.node['to'], agent, args)
         logger.debug "New job is #{@job.inspect}"
 
         receiver = Vertebra::Synapse.new
@@ -159,28 +160,10 @@ module Vertebra
             bucket_handler.callback do
               result_iqs = []
               ops_bucket[:results].each do |result|
-                result_iq = LM::Message.new(from, LM::MessageType::IQ)
-                result_iq.root_node['type'] = 'set'
-
                 logger.debug "RESULT: #{result.inspect}"
-                result_tag = Vertebra::Data.new(token)
-
-                if Hash === result
-                  response = result
-                elsif Exception === result
-                  response = {:error => result}
-                else
-                  # Intended as a compatibility layer for existing actors which do not return hashes;
-                  # this may disappear in the future.
-                  response = {:response => result}
-                end
-                Vertebra::Conversion::Marshal.encode(response).children.each do |child|
-                  result_tag.add(child)
-                end
-                logger.debug "ADDING: #{result_tag}"
-
-                result_iq.root_node.raw_mode = false
-                result_iq.root_node.add_child result_tag
+                result_tag = Vertebra::Data.new(token, result)
+                result_iq = result_tag.to_iq
+                result_iq.node['to'] = from
                 logger.debug "FULL IQ: #{result_iq.node}"
 
                 result_iqs << result_iq

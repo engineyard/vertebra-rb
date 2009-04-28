@@ -54,7 +54,7 @@ module Vertebra
 
       def initialize(outcall, operation, token, scope, to, args)
         @outcall = outcall
-        @job = Job.new(operation, token, scope, outcall.jid.to_s, to, args)
+        @job = Job.new(operation, token, scope, outcall.jid.to_s, to, outcall, args)
         @state = :new
       end
 

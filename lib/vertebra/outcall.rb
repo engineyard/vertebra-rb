@@ -170,6 +170,10 @@ module Vertebra
       @agent.connection_is_open_and_authenticated?(*args)
     end
 
+    def servers
+      @agent.servers
+    end
+
     def send_iq(*args)
       @agent.send_iq(*args)
     end

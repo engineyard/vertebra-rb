@@ -54,6 +54,23 @@ module Vertebra
 
   class Data < BaseElement
     name_xmlns 'data', 'http://xmlschema.engineyard.com/agent/api'
+
+    def initialize(token = nil, result = nil)
+      super(token)
+      
+      if Hash === result
+        response = result
+      elsif Exception === result
+        response = {:error => result}
+      else
+        # Intended as a compatibility layer for existing actors which do not return hashes;
+        # this may disappear in the future.
+        response = {:response => result}
+      end
+      Vertebra::Conversion::Marshal.encode(response).children.each do |child|
+        add(child)
+      end
+    end
   end
 
   class Error < BaseElement

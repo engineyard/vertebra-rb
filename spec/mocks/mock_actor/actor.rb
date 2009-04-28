@@ -53,7 +53,7 @@ module MockActor
 
     bind_op "/list/deferredslow"
     desc "Get a list of letters and numbers, slowly, without blocking the reactor"
-    def deferred_slow(args)
+    def deferred_slow(args, job)
       bit = Vertebra::ActorSynapse.new(@agent)
 
       size = args['size'].to_i
@@ -62,12 +62,10 @@ module MockActor
 
       acc = ''
       bit.action do |synapse|
-        if Time.now > (start + 1)
-          start = Time.now
-          acc << 'abcdef0123456789'[rand(16)].chr
-          size -= 1
-        end
-        size == 0 ? acc : synapse
+puts size
+        job.result 'abcdef0123456789'[rand(16)].chr
+        size -= 1
+        size == 0 ? nil : synapse
       end
 
       bit

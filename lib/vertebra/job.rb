@@ -17,8 +17,8 @@
 
 module Vertebra
   class Job
-    def initialize(operation, token, scope, from, to, args)
-      @operation, @token, @scope, @from, @to, @args = operation, token, scope, from, to, args
+    def initialize(operation, token, scope, from, to, outcall_or_agent, args)
+      @operation, @token, @scope, @from, @to, @outcall_or_agent, @args = operation, token, scope, from, to, outcall_or_agent, args
     end
     attr_reader :operation, :scope, :from, :to, :args
     attr_accessor :token
@@ -28,5 +28,23 @@ module Vertebra
       @updated = true
       @token = new_token
     end
+
+    # Use this to return a single result, which will in turn cause a single <data>
+    # stanza to be sent back to the client.  This allows sending of partial results
+    # over time, or streaming of data.
+    def result(data)
+      begin
+      result_tag = Vertebra::Data.new(@token, data)
+      result_iq = result_tag.to_iq
+      result_iq.node['to'] = from
+      @outcall_or_agent.servers[token].final_countdown[result_iq.node['id']] = true
+      @outcall_or_agent.packet_memory.set(result_iq.node['to'], token, result_iq.node['id'],result_iq)
+      @outcall_or_agent.send_iq(result_iq)
+      rescue Exception => e
+        puts e; puts e.backtrace
+      end
+      
+    end
+
   end
 end
