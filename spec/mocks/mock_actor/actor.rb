@@ -119,7 +119,7 @@ module MockActor
 
     bind_op "/list/somethingelse"
     desc "A proxy op that reissues another list op, based upon the arg it is given. ex. :as => 'numbers' "
-    def somethingelse(args)
+    def somethingelse(args, job)
       as = args['as'] || 'numbers'
       op = "/list/#{as}"
       bit = Vertebra::ActorSynapse.new(@agent)
@@ -129,8 +129,8 @@ module MockActor
           bit[:requestor] = @agent.request(op, :all)
         end
         if bit[:requestor][:results]
-#          bit[:requestor][:results].collect {|r| r.has_key?('response') ? r['response'] : r}
-          bit[:requestor][:results]
+          bit[:requestor][:results].each {|r| job.result r}
+          nil
         else
           synapse
         end
