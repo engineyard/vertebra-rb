@@ -160,6 +160,7 @@ module Vertebra
             bucket_handler.callback do
               result_iqs = []
               ops_bucket[:results].each do |result|
+                next if result.nil? # If an actor wants to return a boolean false result, it should return false, not nil; nil skips returning a <data> stanza.
                 logger.debug "RESULT: #{result.inspect}"
                 result_tag = Vertebra::Data.new(token, result)
                 result_iq = result_tag.to_iq
@@ -172,13 +173,6 @@ module Vertebra
               notifier = Vertebra::Synapse.new
               notifier.condition { @agent.connection_is_open_and_authenticated? }
 
-              # This doesn't actually work right when there are multiple data stanzas,
-              # since each should be sent as it's generated, and there may be gaps
-              # in time between when one is generated and the next is generated.
-              # The code needs to have a conclusive signal as to when the _last_
-              # data segment has been generated, and trigger the final _after_ that.
-              # This signal is probably when then actor method returns something that
-              # is a non-synapse result.
               notifier.callback do
                 result_iqs.each do |iq|
                   @final_countdown[iq.node['id']] = true
@@ -206,7 +200,7 @@ module Vertebra
       def process_data_result(node = nil)
         node && @final_countdown.delete(node['id'])
 
-        if @final_countdown.keys.length == 0 && @state != :flush
+        if @final_countdown.keys.length == 0 && @state != :flush && job.finished?
           @state = :flush
           final_tag = ::Vertebra::Final.new(token)
           logger.debug "  Send Final"

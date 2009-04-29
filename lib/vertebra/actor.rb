@@ -179,7 +179,11 @@ module Vertebra
             end
 
             r << method_result
-            @agent.enqueue_synapse(method_result) if Vertebra::Synapse === method_result
+            if Vertebra::Synapse === method_result
+              @agent.enqueue_synapse(method_result)
+            else
+              job.finished = true
+            end
           end
           :succeeded
         end
@@ -187,13 +191,16 @@ module Vertebra
 
       method_iterator.callback do
         gatherer.condition do
-          r.all? do |res|
+          completed = r.all? do |res|
             if Vertebra::Synapse === res
               res.has_key?(:results)
             else
               true
             end
-          end ? :succeeded : :deferred
+          end
+
+          job.finished = true if completed
+          completed ? :succeeded : :deferred
         end
 
         gatherer.callback do

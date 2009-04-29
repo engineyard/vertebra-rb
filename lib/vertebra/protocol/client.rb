@@ -64,8 +64,6 @@ module Vertebra
         initiator.condition { @outcall.connection_is_open_and_authenticated? }
 
         iq = LM::Message.new(job.to, LM::MessageType::IQ, LM::MessageSubType::SET)
-#        token = "#{@job.token}-#{iq.node['id']}"
-#        @job.token = token
         op = Vertebra::Init.new(job.token, job.operation, job.scope)
 
         iq.node['xml:lang'] = 'en'
@@ -78,7 +76,6 @@ module Vertebra
         logger.debug "CREATED IQ #{iq.node.to_s} with class #{iq.class}"
 
         @outcall.packet_memory.set(job.to, job.token, iq.node['id'], iq)
- #       @outcall.add_client(token, self)
         @outcall.add_client("#{job.to};#{iq.node['id']}", self)
 
         initiator.callback do
@@ -125,10 +122,18 @@ module Vertebra
 
       def process_data_or_final(iq, stanza_type, stanza)
         logger.debug "Client#process_data_or_final: #{iq.node}"
+        @partial_data ||= []
+        @results ||= []
         case stanza_type
         when :result
           raw_element = REXML::Document.new(stanza.to_s).root
-          (@results ||= []) << Vertebra::Conversion::Marshal.decode(raw_element)
+          decoded_data = Vertebra::Conversion::Marshal.decode(raw_element)
+          if decoded_data.has_key?('_partial_data') && decoded_data.has_key?('_seq')
+            @partial_data[decoded_data['_seq']] = decoded_data['_partial_data']
+          else
+            @results << Vertebra::Conversion::Marshal.decode(raw_element)
+          end
+
           raw_element.children.each {|e| raw_element.delete e}
         when :error
           @state = :error
@@ -137,6 +142,8 @@ module Vertebra
           @results = {:error => Vertebra::Conversion::Marshal.decode(raw_element), :results => results}
           @outcall.remove_client(@token)
         when :final
+          @results << @partial_data if !@partial_data.empty?
+
           @state = :commit
           logger.debug "DELETING TOKEN #{@token}"
           @outcall.packet_memory.delete_by_token(@token)

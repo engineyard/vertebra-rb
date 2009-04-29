@@ -57,7 +57,7 @@ module Vertebra
 
     def initialize(token = nil, result = nil)
       super(token)
-      
+
       if Hash === result
         response = result
       elsif Exception === result

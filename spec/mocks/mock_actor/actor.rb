@@ -19,6 +19,36 @@ require File.dirname(__FILE__) + "/../../../lib/vertebra/actor"
 require 'rubygems'
 require 'thor'
 require 'vertebra/actor_synapse'
+require 'eventmachine'
+
+class ProcessStreamer < EventMachine::Connection
+  def initialize(cb)
+    super()
+    @cb = cb
+    @closed = false
+    @data = ''
+  end
+
+  def receive_data data
+    @data << data
+    rows = @data.split(/\n/)
+    @data = rows.last
+    @data << "\n" if data[-1] == 10
+
+    rows[0..-2].each do |row|
+      @cb.call(row)
+    end
+  end
+
+  def unbind
+    @data.split(/\n/).each { |row| @cb.call(row) }
+    @closed = true
+  end
+
+  def closed?
+    @closed
+  end
+end
 
 module MockActor
   class Actor < Vertebra::Actor
@@ -51,21 +81,19 @@ module MockActor
       end.call('',size)
     end
 
-    bind_op "/list/deferredslow"
-    desc "Get a list of letters and numbers, slowly, without blocking the reactor"
-    def deferred_slow(args, job)
+    bind_op "/list/iostat"
+    desc "Run 'iostat' and return the data, one line at a time, as it is available"
+    def run_iostat(args, job)
       bit = Vertebra::ActorSynapse.new(@agent)
 
-      size = args['size'].to_i
-      size = 32 if size == 0
-      start = Time.now
+      interval = args['interval'] ? args['interval'].to_i : 1
+      count = args['count'] ? args['count'].to_i : 5
 
-      acc = ''
+      data_handler = lambda {|row| job.result row}
+      streamer = EM.popen("iostat #{interval} #{count}",ProcessStreamer,data_handler)
+
       bit.action do |synapse|
-puts size
-        job.result 'abcdef0123456789'[rand(16)].chr
-        size -= 1
-        size == 0 ? nil : synapse
+        streamer.closed? ? nil : synapse
       end
 
       bit
