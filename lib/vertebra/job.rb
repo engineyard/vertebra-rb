@@ -22,7 +22,6 @@ module Vertebra
 
     def initialize(operation, token, scope, from, to, outcall_or_agent, args)
       @finished = false
-      @seq = 0
       @operation, @token, @scope, @from, @to, @outcall_or_agent, @args = operation, token, scope, from, to, outcall_or_agent, args
     end
     attr_reader :operation, :scope, :from, :to, :args
@@ -38,11 +37,8 @@ module Vertebra
     # stanza to be sent back to the client.  This allows sending of partial results
     # over time, or streaming of data.
     def result(data)
-      wrapped_data = {'_partial_data' => data, '_seq' => @seq}
-      @seq += 1
-
       begin
-      result_tag = Vertebra::Data.new(@token, wrapped_data)
+      result_tag = Vertebra::Data.new(@token, data)
       result_iq = result_tag.to_iq
       result_iq.node['to'] = from
       @outcall_or_agent.servers[token].final_countdown[result_iq.node['id']] = true
@@ -51,7 +47,6 @@ module Vertebra
       rescue Exception => e
         puts e; puts e.backtrace
       end
-
     end
 
     def finished?

@@ -128,11 +128,8 @@ module Vertebra
         when :result
           raw_element = REXML::Document.new(stanza.to_s).root
           decoded_data = Vertebra::Conversion::Marshal.decode(raw_element)
-          if decoded_data.has_key?('_partial_data') && decoded_data.has_key?('_seq')
-            @partial_data[decoded_data['_seq']] = decoded_data['_partial_data']
-          else
-            @results << Vertebra::Conversion::Marshal.decode(raw_element)
-          end
+          # TODO: Ideally, this should be calling some callback block with the element.
+          @results << Vertebra::Conversion::Marshal.decode(raw_element)
 
           raw_element.children.each {|e| raw_element.delete e}
         when :error
