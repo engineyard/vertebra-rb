@@ -69,7 +69,7 @@ module Jabber
 
       super
 
-      delete_namespcae if new_parent and new_parent.namespace('') == namespace('')
+      delete_namespace if new_parent and new_parent.namespace('') == namespace('')
     end
 
     def clone
